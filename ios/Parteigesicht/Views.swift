@@ -15,6 +15,7 @@ struct RootView: View {
             }
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
+            .background(Theme.paper.ignoresSafeArea())
         }
         .environmentObject(game)
     }
@@ -30,10 +31,11 @@ struct MenuView: View {
         let elig = ix.eligible(levels: game.levels)
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
+                Wordmark(index: ix, size: 30)
                 Text("\(ix.people.count) Gesichter · Stand \(ix.generated)")
-                    .font(.footnote.monospaced()).foregroundStyle(.secondary)
+                    .font(Theme.body(14, .semibold)).foregroundStyle(Theme.muted)
 
-                Text("Ebene").font(.headline)
+                Text("Ebene").font(Theme.display(15))
                 FlowLayout(spacing: 8) {
                     Chip(label: "Alle", detail: nil, color: nil, on: game.levels == game.allLevels, enabled: true) { game.toggleLevel(nil) }
                     ForEach(ix.levels) { l in
@@ -42,11 +44,24 @@ struct MenuView: View {
                     }
                 }
 
-                Text("Parteien").font(.headline)
-                FlowLayout(spacing: 8) {
+                Text("Parteien").font(Theme.display(15))
+                VStack(spacing: 6) {
                     ForEach(ix.parties.filter { ix.count($0.key, levels: game.allLevels) > 0 }) { p in
-                        Chip(label: p.label, detail: "\(ix.count(p.key, levels: game.levels))", color: Color(hex: p.color),
-                             on: game.chosen.contains(p.key), enabled: elig.contains(p.key)) { game.toggleParty(p.key) }
+                        let enabled = elig.contains(p.key)
+                        Toggle(isOn: Binding(get: { game.chosen.contains(p.key) }, set: { _ in game.toggleParty(p.key) })) {
+                            HStack(spacing: 10) {
+                                Circle().fill(Color(hex: p.color)).frame(width: 14, height: 14)
+                                Text(p.label).font(Theme.body(16, .semibold))
+                                Spacer()
+                                Text(enabled ? "\(ix.count(p.key, levels: game.levels))" : "zu wenige")
+                                    .font(Theme.body(13, .semibold)).foregroundStyle(Theme.muted).monospacedDigit()
+                            }
+                        }
+                        .tint(Theme.yes)
+                        .disabled(!enabled)
+                        .opacity(enabled ? 1 : 0.4)
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.card))
                     }
                 }
                 Text("Parteien mit weniger als \(ix.minFaces) Gesichtern in der gewählten Ebene sind ausgegraut, damit jede Partei gleich oft vorkommt.")
@@ -62,20 +77,18 @@ struct MenuView: View {
                     }
                 }
                 .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 10).fill(Color.gray.opacity(0.12)))
+                .background(RoundedRectangle(cornerRadius: 12).fill(Theme.card))
 
-                Button { game.start() } label: {
-                    Text("Runde starten").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
-                }
-                .buttonStyle(.borderedProminent).tint(.primary)
-                .disabled(game.chosen.isEmpty)
+                PrimaryButton(title: "Runde starten") { game.start() }
+                    .disabled(game.chosen.isEmpty)
+                    .opacity(game.chosen.isEmpty ? 0.35 : 1)
 
                 Text("Fotos: Wikimedia Commons (freie Lizenzen, Urheber unter jedem Bild). Personen und Ämter: Wikidata und abgeordnetenwatch.de. Hintergründe sind weichgezeichnet.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(Theme.body(12)).foregroundStyle(Theme.muted)
             }
             .padding()
         }
-        .navigationTitle("Parteigesicht")
+        .toolbar(.hidden)
     }
 }
 
@@ -137,12 +150,18 @@ struct RoundHeader: View {
     var body: some View {
         VStack(spacing: 8) {
             HStack {
-                Button("Menü") { game.backToMenu() }
+                Button { game.backToMenu() } label: {
+                    Text("Menü").font(Theme.body(14, .bold)).padding(.horizontal, 13).padding(.vertical, 7)
+                        .background(Capsule().fill(Theme.card))
+                }
+                .buttonStyle(.plain)
                 Spacer()
-                Text("\(min(game.position + 1, game.items.count)) / \(game.items.count) · \(game.correctCount) richtig")
-                    .font(.footnote.monospaced()).foregroundStyle(.secondary)
+                Text("parteigesicht").font(Theme.display(15, .heavy)).kerning(-0.5)
+                Spacer()
+                Text("\(min(game.position + 1, game.items.count))/\(game.items.count) · \(game.correctCount) ✓")
+                    .font(Theme.body(13, .bold)).foregroundStyle(Theme.muted).monospacedDigit()
             }
-            ProgressView(value: Double(game.position), total: Double(max(1, game.items.count))).tint(.primary)
+            ProgressView(value: Double(game.position), total: Double(max(1, game.items.count))).tint(Theme.ink)
         }
     }
 }
@@ -154,7 +173,7 @@ struct Credit: View {
             Text("Foto: \(person.artist) · \(person.license) ·")
             if let url = person.commonsURL { Link("Commons", destination: url) }
         }
-        .font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+        .font(Theme.body(11)).foregroundStyle(Theme.muted).lineLimit(2)
     }
 }
 
@@ -165,11 +184,11 @@ struct RevealOverlay: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(correct ? "Richtig" : "Daneben")
-                .font(.caption.monospaced().bold()).foregroundStyle(.white)
+                .font(Theme.display(11)).foregroundStyle(.white)
                 .padding(.horizontal, 8).padding(.vertical, 3)
-                .background(RoundedRectangle(cornerRadius: 3).fill(correct ? Color.green.opacity(0.85) : Color.red.opacity(0.85)))
+                .background(Capsule().fill(correct ? Theme.yes : Theme.no))
             Spacer()
-            Text(person.name).font(.title2.bold())
+            Text(person.name).font(Theme.display(20, .heavy))
             HStack(spacing: 6) {
                 Circle().fill(Color(hex: game.index.party(person.party).color)).frame(width: 10, height: 10)
                 Text(game.index.partyLabel(person)).fontWeight(.semibold)
@@ -187,6 +206,7 @@ struct RevealOverlay: View {
 
 struct ChoiceView: View {
     @EnvironmentObject var game: Game
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var answered: String?
 
     var body: some View {
@@ -196,11 +216,12 @@ struct ChoiceView: View {
                 RoundHeader()
                 FaceView(person: p, index: ix)
                     .overlay { if answered != nil { RevealOverlay(person: p, correct: answered == p.party) } }
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
                     .frame(maxHeight: 440)
-                Credit(person: p)
-                Text("Zu welcher Partei gehört diese Person?").font(.headline)
-                let cols = game.chosen.count <= 5 ? game.chosen.count : (game.chosen.count + 1) / 2
+                Text("Zu welcher Partei gehört diese Person?").font(Theme.display(15, .semibold)).multilineTextAlignment(.center)
+                // Telefon: höchstens drei Kacheln pro Zeile, damit alle sichtbar bleiben; iPad: alle in einer Zeile
+                let n = game.chosen.count
+                let cols = sizeClass == .regular ? min(n, 6) : (n <= 3 ? n : (n == 4 ? 2 : 3))
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: max(1, cols)), spacing: 8) {
                     ForEach(game.chosen, id: \.self) { key in
                         let pt = ix.party(key)
@@ -210,26 +231,26 @@ struct ChoiceView: View {
                             game.answer(party: key)
                             Haptics.tap(key == p.party)
                         } label: {
-                            VStack(spacing: 6) {
-                                Image(systemName: answered == key ? "xmark.circle" : "circle").font(.title3)
-                                Text(pt.label).font(.subheadline.bold()).lineLimit(2).minimumScaleFactor(0.7)
+                            HStack(spacing: 4) {
+                                Text(pt.label).font(Theme.display(14)).lineLimit(2).minimumScaleFactor(0.6)
+                                if answered != nil && key == p.party { Text("✓").font(Theme.display(14)) }
+                                else if answered == key { Text("✕").font(Theme.display(14)) }
                             }
-                            .frame(maxWidth: .infinity, minHeight: 64)
+                            .frame(maxWidth: .infinity, minHeight: 58)
                             .foregroundStyle(pt.textDark == true ? Color.black : .white)
-                            .background(RoundedRectangle(cornerRadius: 8).fill(Color(hex: pt.color)))
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(borderColor(key, p), lineWidth: 3).padding(-4))
+                            .background(RoundedRectangle(cornerRadius: 14).fill(Color(hex: pt.color)))
+                            .overlay(RoundedRectangle(cornerRadius: 17).stroke(borderColor(key, p), lineWidth: 3).padding(-5))
                             .opacity(answered == nil || key == answered || key == p.party ? 1 : 0.3)
                         }
                         .buttonStyle(.plain)
                     }
                 }
                 if answered != nil {
-                    Button { answered = nil; game.advance() } label: {
-                        Text(game.position + 1 >= game.items.count ? "Auswertung ansehen" : "Nächstes Gesicht")
-                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+                    PrimaryButton(title: game.position + 1 >= game.items.count ? "Auswertung ansehen" : "Nächstes Gesicht") {
+                        answered = nil; game.advance()
                     }
-                    .buttonStyle(.borderedProminent).tint(.primary)
                 }
+                Credit(person: p)
                 Spacer(minLength: 0)
             }
             .padding()
@@ -238,8 +259,8 @@ struct ChoiceView: View {
 
     private func borderColor(_ key: String, _ p: Person) -> Color {
         guard answered != nil else { return .clear }
-        if key == p.party { return .green }
-        if key == answered { return .red }
+        if key == p.party { return Theme.yes }
+        if key == answered { return Theme.no }
         return .clear
     }
 }
@@ -257,19 +278,20 @@ struct SwipeView: View {
         let target = ix.party(game.targetParty ?? "")
         VStack(spacing: 14) {
             RoundHeader()
-            (Text("Gehört diese Person zu ") + Text(target.label).bold() + Text("?")).font(.headline)
+            (Text("Gehört diese Person zu ") + Text(target.label).foregroundColor(target.key == "UNION" ? Theme.ink : Color(hex: target.color)) + Text("?"))
+                .font(Theme.display(16, .semibold)).multilineTextAlignment(.center)
             ZStack {
                 if game.position + 1 < game.items.count {
                     FaceView(person: game.items[game.position + 1], index: ix)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .clipShape(RoundedRectangle(cornerRadius: 22))
                         .scaleEffect(0.95).offset(y: 10).brightness(-0.08)
                 }
                 if let p = game.current {
                     FaceView(person: p, index: ix)
-                        .overlay(alignment: .topLeading) { Stamp(text: "JA", color: .green, angle: -14).opacity(Double(offset.width / 90)).padding(20) }
-                        .overlay(alignment: .topTrailing) { Stamp(text: "NEIN", color: .red, angle: 14).opacity(Double(-offset.width / 90)).padding(20) }
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .shadow(color: .black.opacity(0.2), radius: 12, y: 6)
+                        .overlay(alignment: .topLeading) { Stamp(text: "JA", color: Theme.yes, angle: -14).opacity(Double(offset.width / 90)).padding(20) }
+                        .overlay(alignment: .topTrailing) { Stamp(text: "NEIN", color: Theme.no, angle: 14).opacity(Double(-offset.width / 90)).padding(20) }
+                        .clipShape(RoundedRectangle(cornerRadius: 22))
+                        .shadow(color: .black.opacity(0.22), radius: 14, y: 8)
                         .offset(x: offset.width, y: offset.height * 0.4)
                         .rotationEffect(.degrees(Double(offset.width / 18)))
                         .gesture(
@@ -292,15 +314,15 @@ struct SwipeView: View {
             .frame(maxHeight: 480)
             if let p = game.current { Credit(person: p) }
             HStack(spacing: 36) {
-                RoundButton(symbol: "xmark", color: .red) { decide(false) }.accessibilityLabel("Nein, gehört nicht zu \(target.label)")
-                RoundButton(symbol: "checkmark", color: .green) { decide(true) }.accessibilityLabel("Ja, gehört zu \(target.label)")
+                RoundButton(symbol: "xmark", color: Theme.no) { decide(false) }.accessibilityLabel("Nein, gehört nicht zu \(target.label)")
+                RoundButton(symbol: "checkmark", color: Theme.yes) { decide(true) }.accessibilityLabel("Ja, gehört zu \(target.label)")
             }
             Group {
                 if let (p, ok) = feedback {
-                    (Text(ok ? "Richtig: " : "Daneben: ").foregroundColor(ok ? .green : .red).bold()
+                    (Text(ok ? "Richtig: " : "Daneben: ").foregroundColor(ok ? Theme.yes : Theme.no).bold()
                      + Text(p.name).bold() + Text(", \(ix.partyLabel(p)) · \(p.whereLabel)"))
                 } else {
-                    Text("Nach rechts wischen = Ja · nach links = Nein").foregroundStyle(.secondary)
+                    Text("Nach rechts wischen = Ja · nach links = Nein").foregroundStyle(Theme.muted)
                 }
             }
             .font(.subheadline).multilineTextAlignment(.center).frame(minHeight: 44)
@@ -329,7 +351,7 @@ struct SwipeView: View {
 struct Stamp: View {
     let text: String; let color: Color; let angle: Double
     var body: some View {
-        Text(text).font(.system(size: 30, weight: .heavy)).foregroundStyle(color)
+        Text(text).font(Theme.display(30, .black)).foregroundStyle(color)
             .padding(.horizontal, 10).padding(.vertical, 2)
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(color, lineWidth: 4))
             .rotationEffect(.degrees(angle))
@@ -342,7 +364,7 @@ struct RoundButton: View {
         Button(action: action) {
             Image(systemName: symbol).font(.system(size: 28, weight: .heavy)).foregroundStyle(color)
                 .frame(width: 68, height: 68)
-                .background(Circle().fill(.background).shadow(color: .black.opacity(0.15), radius: 8, y: 3))
+                .background(Circle().fill(Theme.card).shadow(color: .black.opacity(0.15), radius: 8, y: 3))
         }
         .buttonStyle(.plain)
     }
@@ -360,12 +382,12 @@ struct ResultView: View {
         let chance = game.targetParty != nil ? Double(n) / 2 : Double(n) / Double(max(1, game.chosen.count))
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("\(ok) von \(n)").font(.system(size: 44, weight: .heavy))
+                Text("\(ok) von \(n)").font(Theme.display(44, .heavy)).kerning(-1.5)
                 Text("Reiner Zufall läge bei etwa \(Int(chance.rounded())) von \(n).")
-                Text("Gesamt bisher: \(game.totalCorrect) von \(game.totalAnswered)").foregroundStyle(.secondary)
+                Text("Gesamt bisher: \(game.totalCorrect) von \(game.totalAnswered)").foregroundStyle(Theme.muted)
                 ForEach(insights(), id: \.self) { t in
                     Text(t).padding(12).frame(maxWidth: .infinity, alignment: .leading)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(Color.gray.opacity(0.12)))
+                        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.card))
                 }
                 if game.targetParty == nil { matrix }
                 let wrong = a.filter { !$0.correct }
@@ -379,15 +401,13 @@ struct ResultView: View {
                     }
                 }
                 HStack {
-                    Button { game.start() } label: { Text("Neue Runde").frame(maxWidth: .infinity).padding(.vertical, 6) }
-                        .buttonStyle(.borderedProminent).tint(.primary)
-                    Button { game.backToMenu() } label: { Text("Menü").frame(maxWidth: .infinity).padding(.vertical, 6) }
-                        .buttonStyle(.bordered).tint(.primary)
+                    PrimaryButton(title: "Neue Runde") { game.start() }
+                    PrimaryButton(title: "Menü", secondary: true) { game.backToMenu() }
                 }
             }
             .padding()
         }
-        .navigationTitle("Auswertung")
+        .toolbar(.hidden)
     }
 
     private func insights() -> [String] {
@@ -446,7 +466,7 @@ struct ResultView: View {
             }
         }
         .padding(10)
-        .background(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.3)))
+        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.card))
     }
 }
 
@@ -455,5 +475,20 @@ enum Haptics {
         #if os(iOS)
         UINotificationFeedbackGenerator().notificationOccurred(ok ? .success : .error)
         #endif
+    }
+}
+
+struct PrimaryButton: View {
+    let title: String
+    var secondary = false
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Text(title).font(Theme.display(15))
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .foregroundStyle(secondary ? Theme.ink : Theme.paper)
+                .background(RoundedRectangle(cornerRadius: 14).fill(secondary ? Theme.card : Theme.ink))
+        }
+        .buttonStyle(.plain)
     }
 }

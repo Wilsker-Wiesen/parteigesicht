@@ -10,3 +10,6 @@ ios/build/
 ios/*.xcodeproj/xcuserdata/
 ios/*.xcodeproj/project.xcworkspace/xcuserdata/
 __pycache__/
+
+# erster Prototyp (nur Bundestag), ersetzt durch app/
+parteiraten/

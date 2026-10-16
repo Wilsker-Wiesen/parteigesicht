@@ -1,0 +1,11 @@
+{
+ "_info": "Politische Ebenen. Eine Person wird anhand ihrer aktuellen Ämter eingeordnet (Wikidata P39 ohne Enddatum und mit laufender Wahlperiode bzw. Beginn ab 2018, siehe pipeline/collect.py:is_current). 'patterns' sind reguläre Ausdrücke auf die deutsche Bezeichnung des Amts. Die erste passende Ebene in dieser Reihenfolge gewinnt.",
+ "levels": [
+  {"key": "bundestag", "label": "Bundestag", "patterns": ["Mitglied des (Deutschen )?Bundestag"]},
+  {"key": "europa", "label": "Europaparlament", "patterns": ["Mitglied des Europäischen Parlaments"]},
+  {"key": "landtag", "label": "Landtage", "patterns": ["Landtag", "Abgeordnetenhaus", "Bürgerschaft"]},
+  {"key": "regierung", "label": "Regierungen", "patterns": ["minister", "Minister", "Bundeskanzler", "Staatssekretär", "Senator", "Bundesrat", "Ministerpräsident", "Regierender Bürgermeister", "Erster Bürgermeister", "Landesregierung"]},
+  {"key": "kommunal", "label": "Kommunal", "patterns": ["Bürgermeister", "Landrat", "Landrätin", "Stadtrat", "Stadträt", "Gemeinderat", "Kreistag", "Bezirks", "Stadtverordnete", "Stadtvertretung", "Ratsmitglied", "Ratsherr", "Mitglied des Rates", "Beigeordnete", "Ortsvorsteher", "Ortsbeirat", "Regionalversammlung", "Kreisrat", "Kommunal"]}
+ ],
+ "fallback": {"key": "weitere", "label": "Weitere Parteimitglieder", "info": "Lebende Parteimitglieder mit Foto ohne erkennbares aktuelles Amt (z. B. frühere Abgeordnete, Parteivorstände, Kandidierende)."}
+}

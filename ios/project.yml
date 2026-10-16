@@ -1,0 +1,28 @@
+# Xcode-Projekt wird mit XcodeGen erzeugt:  cd ios && xcodegen
+name: Parteigesicht
+options:
+  bundleIdPrefix: de.parteigesicht
+  deploymentTarget:
+    iOS: "17.0"
+targets:
+  Parteigesicht:
+    type: application
+    platform: iOS
+    sources:
+      - path: Parteigesicht
+      # Spieldaten (index.json + Bildbögen) werden als Ordner ins App-Bundle kopiert
+      - path: ../app/data
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.parteigesicht.app
+        MARKETING_VERSION: "0.2"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Parteigesicht
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        SWIFT_VERSION: "5.0"

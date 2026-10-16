@@ -1,0 +1,12 @@
+# Zwischenspeicher (Downloads, Abfragen, Rohbilder) – lässt sich mit der Pipeline neu erzeugen
+data/cache/
+data/*.log
+# kompilierte Werkzeuge
+pipeline/portrait
+pipeline/sprites
+.DS_Store
+# Xcode
+ios/build/
+ios/*.xcodeproj/xcuserdata/
+ios/*.xcodeproj/project.xcworkspace/xcuserdata/
+__pycache__/

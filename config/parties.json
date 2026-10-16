@@ -1,0 +1,176 @@
+{
+ "_info": "Parteien im Spiel. 'qids' sind Wikidata-Items; mehrere Items können zu einer Spielkachel zusammengefasst werden (CDU+CSU = Union). 'core' = immer im Standardspiel; weitere Parteien sind nur wählbar, wenn in den gewählten Ebenen mindestens min_faces Gesichter vorhanden sind. 'commons' = Commons-Kategorien der Parteimitglieder (zusätzliche Fotoquelle, siehe pipeline/commons_categories.py).",
+ "min_faces": 20,
+ "parties": [
+  {
+   "key": "GRUENE",
+   "label": "Grüne",
+   "long": "Bündnis 90/Die Grünen",
+   "color": "#3f8f2a",
+   "core": true,
+   "qids": {
+    "Q49766": "Grüne",
+    "Q18761823": "Grüne"
+   },
+   "commons": [
+    "Members of Bündnis 90/Die Grünen"
+   ]
+  },
+  {
+   "key": "SPD",
+   "label": "SPD",
+   "long": "SPD",
+   "color": "#e3000f",
+   "core": true,
+   "qids": {
+    "Q49768": "SPD"
+   },
+   "commons": [
+    "Members of the SPD"
+   ]
+  },
+  {
+   "key": "UNION",
+   "label": "Union",
+   "long": "CDU/CSU",
+   "color": "#1d1d1b",
+   "core": true,
+   "qids": {
+    "Q49762": "CDU",
+    "Q49763": "CSU"
+   },
+   "commons": [
+    "Members of the CDU",
+    "Members of the CSU"
+   ]
+  },
+  {
+   "key": "AFD",
+   "label": "AfD",
+   "long": "AfD",
+   "color": "#009ee0",
+   "core": true,
+   "qids": {
+    "Q6721203": "AfD"
+   },
+   "commons": [
+    "Members of Alternative für Deutschland"
+   ]
+  },
+  {
+   "key": "LINKE",
+   "label": "Linke",
+   "long": "Die Linke",
+   "color": "#b8236e",
+   "core": true,
+   "qids": {
+    "Q49764": "Die Linke"
+   },
+   "commons": [
+    "Members of Die Linke"
+   ]
+  },
+  {
+   "key": "FDP",
+   "label": "FDP",
+   "long": "FDP",
+   "color": "#e6b800",
+   "textDark": true,
+   "core": false,
+   "qids": {
+    "Q13124": "FDP"
+   },
+   "commons": [
+    "Members of the FDP"
+   ]
+  },
+  {
+   "key": "BSW",
+   "label": "BSW",
+   "long": "Bündnis Sahra Wagenknecht",
+   "color": "#7d254f",
+   "core": false,
+   "qids": {
+    "Q123121346": "BSW"
+   },
+   "commons": [
+    "Members of the BSW"
+   ]
+  },
+  {
+   "key": "FW",
+   "label": "Freie Wähler",
+   "long": "Freie Wähler",
+   "color": "#f28c00",
+   "core": false,
+   "qids": {
+    "Q327389": "Freie Wähler"
+   },
+   "commons": [
+    "Members of Freie Wähler"
+   ]
+  },
+  {
+   "key": "PIRATEN",
+   "label": "Piraten",
+   "long": "Piratenpartei",
+   "color": "#ff8800",
+   "core": false,
+   "qids": {
+    "Q13129": "Piraten"
+   },
+   "commons": [
+    "Members of Piratenpartei Deutschland"
+   ]
+  },
+  {
+   "key": "OEDP",
+   "label": "ÖDP",
+   "long": "ÖDP",
+   "color": "#ff6b00",
+   "core": false,
+   "qids": {
+    "Q294989": "ÖDP"
+   },
+   "commons": [
+    "Members of Ökologisch-Demokratische Partei"
+   ]
+  },
+  {
+   "key": "VOLT",
+   "label": "Volt",
+   "long": "Volt Deutschland",
+   "color": "#502379",
+   "core": false,
+   "qids": {
+    "Q55011396": "Volt"
+   },
+   "commons": [
+    "Members of Volt Germany"
+   ]
+  },
+  {
+   "key": "PARTEI",
+   "label": "Die PARTEI",
+   "long": "Die PARTEI",
+   "color": "#b5152b",
+   "core": false,
+   "qids": {
+    "Q22748": "Die PARTEI"
+   }
+  },
+  {
+   "key": "SSW",
+   "label": "SSW",
+   "long": "Südschleswigscher Wählerverband",
+   "color": "#003c8f",
+   "core": false,
+   "qids": {
+    "Q161545": "SSW"
+   },
+   "commons": [
+    "Members of Südschleswigscher Wählerverband"
+   ]
+  }
+ ]
+}

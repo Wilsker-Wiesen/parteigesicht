@@ -69,7 +69,7 @@ struct MenuView: View {
 
                 Group {
                     if let t = game.targetParty {
-                        Text("**Ja/Nein-Modus:** Gehört die Person zu **\(ix.party(t).label)**? Nach rechts wischen = Ja, nach links = Nein.")
+                        Text("**Ja/Nein-Modus:** Gehört die Person **\(ix.party(t).zu ?? "zu " + ix.party(t).label)**? Nach rechts wischen = Ja, nach links = Nein.")
                     } else if game.chosen.count >= 2 {
                         Text("**Zuordnen:** \(game.chosen.count) Parteien, je \(max(2, Int((Double(Game.roundSize) / Double(game.chosen.count)).rounded()))) Gesichter pro Runde.")
                     } else {
@@ -278,7 +278,7 @@ struct SwipeView: View {
         let target = ix.party(game.targetParty ?? "")
         VStack(spacing: 14) {
             RoundHeader()
-            (Text("Gehört diese Person zu ") + Text(target.label).foregroundColor(target.key == "UNION" ? Theme.ink : Color(hex: target.color)) + Text("?"))
+            (Text("Gehört diese Person ") + Text(target.zu ?? "zu \(target.label)").foregroundColor(target.key == "UNION" || target.textDark == true ? Theme.ink : Color(hex: target.color)) + Text("?"))
                 .font(Theme.display(16, .semibold)).multilineTextAlignment(.center)
             ZStack {
                 if game.position + 1 < game.items.count {

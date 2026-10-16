@@ -10,6 +10,8 @@ struct GameIndex: Decodable {
         let color: String
         let core: Bool
         let textDark: Bool?
+        /// Dativ für die Ja/Nein-Frage, z. B. "zu den Grünen"
+        let zu: String?
         let counts: [String: Int]
         var id: String { key }
     }

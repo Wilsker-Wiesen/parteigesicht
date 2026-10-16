@@ -30,7 +30,7 @@
   --paper: #111318; --card: #1d2028; --ink: #f2f3f5; --muted: #9ea4b0; --rule: #333844;
   --ok: #3fd07a; --bad: #ff5e6e; color-scheme: dark;
 }
-html, body { height: 100%; }
+html, body { height: 100%; overflow-x: clip; overscroll-behavior: none; }
 body {
   background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 16px;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
@@ -169,13 +169,13 @@ function person(i) {
 function faceStyle(p) {
   const sh = IX.sheets[p.sheet], cols = IX.cell.cols, rows = Math.ceil(sh.n / cols);
   const c = p.cell % cols, r = Math.floor(p.cell / cols);
-  return `background-image:url('${sh.file}');background-size:${cols * 100}% ${rows * 100}%;` +
+  return `background-image:url('data/${sh.file}');background-size:${cols * 100}% ${rows * 100}%;` +
     `background-position:${cols > 1 ? c / (cols - 1) * 100 : 0}% ${rows > 1 ? r / (rows - 1) * 100 : 0}%`;
 }
 const preload = new Map();
 function loadSheets(ids) {
   return Promise.all([...new Set(ids)].map(id => {
-    if (!preload.has(id)) preload.set(id, new Promise(res => { const im = new Image(); im.onload = im.onerror = () => res(); im.src = IX.sheets[id].file; }));
+    if (!preload.has(id)) preload.set(id, new Promise(res => { const im = new Image(); im.onload = im.onerror = () => res(); im.src = "data/" + IX.sheets[id].file; }));
     return preload.get(id);
   }));
 }
@@ -226,7 +226,7 @@ function renderMenu() {
   const total = IX.people.length;
   const mode = chosen.length === 1 ? "single" : chosen.length >= 2 ? "multi" : "none";
   const modeText = mode === "single"
-    ? `<b>Ja/Nein-Modus:</b> Gehört die Person zu <b>${esc(P[chosen[0]].label)}</b>? Wische nach rechts für Ja, nach links für Nein. Die Hälfte der Gesichter gehört zu ${esc(P[chosen[0]].label)}, die andere Hälfte zu anderen Parteien.`
+    ? `<b>Ja/Nein-Modus:</b> Gehört die Person <b>${esc(P[chosen[0]].zu || "zu " + P[chosen[0]].label)}</b>? Wische nach rechts für Ja, nach links für Nein. Die Hälfte der Gesichter gehört zu ${esc(P[chosen[0]].label)}, die andere Hälfte zu anderen Parteien.`
     : mode === "multi"
       ? `<b>Zuordnen:</b> ${chosen.length} Parteien, je ${Math.max(2, Math.round(ROUND_SIZE / chosen.length))} Gesichter pro Runde. Tippe die Partei an, zu der die Person gehört.`
       : "Wähle mindestens eine Partei.";
@@ -333,6 +333,7 @@ function answer(guess) {
   picked.classList.add("picked"); picked.querySelector(".mark").textContent = "✕";
   const truthBtn = document.getElementById("b-" + p.party);
   truthBtn.classList.add("truth"); truthBtn.querySelector(".mark").textContent = "✓";
+  document.querySelector(".meta").textContent = `${round.i + 1} / ${round.items.length} · ${round.answers.filter(a => a.ok).length} richtig`;
   document.getElementById("photo").insertAdjacentHTML("beforeend",
     `<span class="verdict ${ok ? "ok" : "bad"}">${ok ? "Richtig" : "Daneben"}</span>${revealHtml(p)}`);
   const last = round.i === round.items.length - 1;
@@ -347,7 +348,7 @@ function renderSwipe() {
   const tp = P[round.single];
   const p = round.items[round.i], nextP = round.items[round.i + 1];
   app.innerHTML = `${headerHtml()}
-    <p class="prompt">Gehört diese Person zu <b style="color:${tp.key === "UNION" ? "inherit" : tp.color}">${esc(tp.label)}</b>?</p>
+    <p class="prompt">Gehört diese Person <b style="color:${tp.key === "UNION" || tp.textDark ? "inherit" : tp.color}">${esc(tp.zu || "zu " + tp.label)}</b>?</p>
     <div class="deck" id="deck">
       ${nextP ? `<div class="swipecard behind"><div class="face" style="${faceStyle(nextP)}"></div></div>` : ""}
       <div class="swipecard" id="card" role="img" aria-label="Porträtfoto"><div class="face" style="${faceStyle(p)}"></div>

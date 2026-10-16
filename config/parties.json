@@ -14,7 +14,8 @@
    },
    "commons": [
     "Members of Bündnis 90/Die Grünen"
-   ]
+   ],
+   "zu": "zu den Grünen"
   },
   {
    "key": "SPD",
@@ -27,7 +28,8 @@
    },
    "commons": [
     "Members of the SPD"
-   ]
+   ],
+   "zu": "zur SPD"
   },
   {
    "key": "UNION",
@@ -42,7 +44,8 @@
    "commons": [
     "Members of the CDU",
     "Members of the CSU"
-   ]
+   ],
+   "zu": "zur Union"
   },
   {
    "key": "AFD",
@@ -55,7 +58,8 @@
    },
    "commons": [
     "Members of Alternative für Deutschland"
-   ]
+   ],
+   "zu": "zur AfD"
   },
   {
    "key": "LINKE",
@@ -68,7 +72,8 @@
    },
    "commons": [
     "Members of Die Linke"
-   ]
+   ],
+   "zu": "zur Linken"
   },
   {
    "key": "FDP",
@@ -82,7 +87,8 @@
    },
    "commons": [
     "Members of the FDP"
-   ]
+   ],
+   "zu": "zur FDP"
   },
   {
    "key": "BSW",
@@ -95,7 +101,8 @@
    },
    "commons": [
     "Members of the BSW"
-   ]
+   ],
+   "zu": "zum BSW"
   },
   {
    "key": "FW",
@@ -108,7 +115,8 @@
    },
    "commons": [
     "Members of Freie Wähler"
-   ]
+   ],
+   "zu": "zu den Freien Wählern"
   },
   {
    "key": "PIRATEN",
@@ -121,7 +129,8 @@
    },
    "commons": [
     "Members of Piratenpartei Deutschland"
-   ]
+   ],
+   "zu": "zu den Piraten"
   },
   {
    "key": "OEDP",
@@ -134,7 +143,8 @@
    },
    "commons": [
     "Members of Ökologisch-Demokratische Partei"
-   ]
+   ],
+   "zu": "zur ÖDP"
   },
   {
    "key": "VOLT",
@@ -147,7 +157,8 @@
    },
    "commons": [
     "Members of Volt Germany"
-   ]
+   ],
+   "zu": "zu Volt"
   },
   {
    "key": "PARTEI",
@@ -157,7 +168,8 @@
    "core": false,
    "qids": {
     "Q22748": "Die PARTEI"
-   }
+   },
+   "zu": "zur PARTEI"
   },
   {
    "key": "SSW",
@@ -170,7 +182,8 @@
    },
    "commons": [
     "Members of Südschleswigscher Wählerverband"
-   ]
+   ],
+   "zu": "zum SSW"
   }
  ]
 }

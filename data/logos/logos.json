@@ -1,0 +1,93 @@
+{
+ "BSW": {
+  "path": "logos/BSW.png",
+  "file": "Bündnis Sahra Wagenknecht logo.svg",
+  "license": "Public domain",
+  "artist": "Bündnis Sahra Wagenknecht",
+  "page": "https://commons.wikimedia.org/wiki/File:B%C3%BCndnis_Sahra_Wagenknecht_logo.svg"
+ },
+ "FDP": {
+  "path": "logos/FDP.png",
+  "file": "Logo der FDP 2026.svg",
+  "license": "Public domain",
+  "artist": "Alexander Svensson",
+  "page": "https://commons.wikimedia.org/wiki/File:Logo_der_FDP_2026.svg"
+ },
+ "PIRATEN": {
+  "path": "logos/PIRATEN.png",
+  "file": "Piratenpartei deutschland logo.svg",
+  "license": "CC BY 4.0",
+  "artist": "Piratenpartei Deutschland",
+  "page": "https://commons.wikimedia.org/wiki/File:Piratenpartei_deutschland_logo.svg"
+ },
+ "SSW": {
+  "path": "logos/SSW.png",
+  "file": "Südschleswigscher Wählerverband, Logo.svg",
+  "license": "Public domain",
+  "artist": "South Schleswig Voter Federation",
+  "page": "https://commons.wikimedia.org/wiki/File:S%C3%BCdschleswigscher_W%C3%A4hlerverband,_Logo.svg"
+ },
+ "PARTEI": {
+  "path": "logos/PARTEI.png",
+  "file": "Die PARTEI Logo Blur Schatten Vektor V2.svg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Tommyhlw",
+  "page": "https://commons.wikimedia.org/wiki/File:Die_PARTEI_Logo_Blur_Schatten_Vektor_V2.svg"
+ },
+ "OEDP": {
+  "path": "logos/OEDP.png",
+  "file": "OEDP Logo CMYK.svg",
+  "license": "Public domain",
+  "artist": "ÖDP",
+  "page": "https://commons.wikimedia.org/wiki/File:OEDP_Logo_CMYK.svg"
+ },
+ "FW": {
+  "path": "logos/FW.png",
+  "file": "FreieWählerBayernLogo2020.svg",
+  "license": "Public domain",
+  "artist": "Freie Wähler Bayern",
+  "page": "https://commons.wikimedia.org/wiki/File:FreieW%C3%A4hlerBayernLogo2020.svg"
+ },
+ "CDU": {
+  "path": "logos/CDU.png",
+  "file": "CDU Logo 2023.svg",
+  "license": "Public domain",
+  "artist": "Unknown authorUnknown author",
+  "page": "https://commons.wikimedia.org/wiki/File:CDU_Logo_2023.svg"
+ },
+ "CSU": {
+  "path": "logos/CSU.png",
+  "file": "CSU Logo since 2016.svg",
+  "license": "Public domain",
+  "artist": "Christlich-Soziale Union in Bayern e. V.",
+  "page": "https://commons.wikimedia.org/wiki/File:CSU_Logo_since_2016.svg"
+ },
+ "LINKE": {
+  "path": "logos/LINKE.png",
+  "file": "Logo Die Linke (2023).svg",
+  "license": "Public domain",
+  "artist": "Die Linke Vektorisiert von PantheraLeo1359531 😺 (talk)",
+  "page": "https://commons.wikimedia.org/wiki/File:Logo_Die_Linke_(2023).svg"
+ },
+ "GRUENE": {
+  "path": "logos/GRUENE.png",
+  "file": "B90Gruene RGB aufTanne.svg",
+  "license": "Public domain",
+  "artist": "Bündnis 90/Die Grünen",
+  "page": "https://commons.wikimedia.org/wiki/File:B90Gruene_RGB_aufTanne.svg"
+ },
+ "SPD": {
+  "path": "logos/SPD.png",
+  "file": "SPD-Logo 2022 (rot).svg",
+  "license": "Public domain",
+  "artist": "Sozialdemokratische Partei Deutschlands (SPD)",
+  "page": "https://commons.wikimedia.org/wiki/File:SPD-Logo_2022_(rot).svg"
+ },
+ "AFD": {
+  "path": "logos/AFD.png",
+  "file": "AfD Logo 2021.svg",
+  "license": "Public domain",
+  "artist": "Alternative for Germany",
+  "page": "https://commons.wikimedia.org/wiki/File:AfD_Logo_2021.svg"
+ }
+}

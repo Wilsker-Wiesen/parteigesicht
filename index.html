@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="de">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Parteigesicht</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Parteigesicht">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800;900&family=Figtree:wght@400;600;700&display=swap">
+<style>
+/* Design „Spektrum“: ruhiger Grund, runde breite Display-Schrift; Farbe kommt nur von den Parteien.
+   Layout: eine Spalte – Foto, Frage, Kacheln (höchstens drei pro Zeile auf dem Telefon, damit alle sichtbar bleiben). */
+:root {
+  --paper: #eef0f4;
+  --card: #ffffff;
+  --ink: #111318;
+  --muted: #5b606b;
+  --rule: #d5d9e1;
+  --ok: #1a9e50;
+  --bad: #e5384b;
+  --f-display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --f-body: "Figtree", -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #111318; --card: #1d2028; --ink: #f2f3f5; --muted: #9ea4b0; --rule: #333844;
+    --ok: #3fd07a; --bad: #ff5e6e; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #111318; --card: #1d2028; --ink: #f2f3f5; --muted: #9ea4b0; --rule: #333844;
+  --ok: #3fd07a; --bad: #ff5e6e; color-scheme: dark;
+}
+html, body { height: 100%; overflow-x: clip; overscroll-behavior: none; }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-tap-highlight-color: transparent;
+}
+.app { max-width: 560px; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; gap: 12px; padding-block: 12px 18px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+h1, .wordmark { font-family: var(--f-display); font-weight: 800; letter-spacing: -0.035em; margin: 0; }
+h1 { font-size: 1.7rem; }
+.wordmark { font-size: 1.05rem; }
+.spectrum { display: flex; gap: 4px; height: 6px; }
+.spectrum i { flex: 1; border-radius: 3px; }
+.meta { font-size: .82rem; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.iconbtn { appearance: none; border: 0; background: var(--card); color: var(--ink); border-radius: 999px;
+  font: 700 .85rem var(--f-body); padding: 7px 13px; cursor: pointer; }
+.progress { height: 4px; background: var(--rule); border-radius: 2px; overflow: hidden; }
+.progress > i { display: block; height: 100%; background: var(--ink); width: 0; transition: width .3s; }
+
+/* Foto: so hoch, dass Frage und alle Kacheln noch auf den Bildschirm passen */
+.photo { position: relative; background: var(--card); border-radius: 18px; overflow: hidden;
+  aspect-ratio: 4 / 5; width: 100%; max-width: min(100%, calc((100dvh - 330px) * 0.8)); min-width: 180px; margin: 0 auto; }
+.face { position: absolute; inset: 0; background-repeat: no-repeat; background-color: var(--rule); }
+.reveal { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 14px 12px; color: #fff;
+  background: linear-gradient(to top, rgba(17,19,24,.88), rgba(17,19,24,0)); display: flex; flex-direction: column; gap: 3px; }
+.reveal .name { font-family: var(--f-display); font-weight: 800; font-size: 1.25rem; line-height: 1.15; text-wrap: balance; }
+.reveal .party { font-weight: 700; font-size: .95rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.reveal .where { font-size: .82rem; opacity: .85; }
+.verdict { position: absolute; top: 12px; left: 12px; font-family: var(--f-display); font-weight: 700; font-size: .75rem; padding: 5px 11px; border-radius: 999px; color: #fff; }
+.verdict.ok { background: var(--ok); } .verdict.bad { background: var(--bad); }
+/* Parteilogo bei der Auflösung: bewusst klein, damit das Gesicht im Mittelpunkt bleibt */
+.badge { position: absolute; top: 12px; right: 12px; width: 72px; height: 44px; border-radius: 8px; background: #fff; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 10px rgba(17,19,24,.25); padding: 5px; box-sizing: border-box; }
+.badge img { max-width: 100%; max-height: 100%; display: block; }
+.badge.full { padding: 0; }
+.badge.full img { width: 100%; height: 100%; max-width: none; max-height: none; object-fit: cover; }
+.credit { font-size: .72rem; color: var(--muted); line-height: 1.3; min-height: 1.3em; overflow-wrap: anywhere; text-align: center; }
+.credit a { color: inherit; }
+
+.prompt { font-family: var(--f-display); font-weight: 600; font-size: 1rem; line-height: 1.3; text-align: center; margin: 0; text-wrap: balance; }
+.ballot { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 620px) { .ballot { grid-template-columns: repeat(var(--nw, 6), minmax(0, 1fr)); } }
+.ballot button {
+  appearance: none; border: 0; border-radius: 14px; cursor: pointer; color: #fff; min-height: 58px;
+  font-family: var(--f-display); font-weight: 700; font-size: clamp(.78rem, 3.4vw, .98rem);
+  padding: 8px 4px; display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: transform .08s, opacity .2s, box-shadow .2s; min-width: 0; overflow-wrap: anywhere; line-height: 1.1;
+}
+.ballot button.dark-text { color: #111318; }
+.ballot button:active { transform: scale(.96); }
+.ballot button:focus-visible, .chip:focus-visible, .next:focus-visible, .switchrow:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.ballot button.union { box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+.ballot.done button { cursor: default; opacity: .25; }
+.ballot.done button.picked, .ballot.done button.truth { opacity: 1; }
+.ballot.done button.truth { box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--ok); }
+.ballot.done button.picked:not(.truth) { box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--bad); }
+
+.next { appearance: none; border: 0; background: var(--ink); color: var(--paper); font-family: var(--f-display); font-weight: 700;
+  font-size: 1rem; padding: 15px; border-radius: 14px; cursor: pointer; width: 100%; }
+.next:disabled { opacity: .35; cursor: not-allowed; }
+.ghost { background: var(--card); color: var(--ink); }
+
+/* Wischmodus */
+.deck { position: relative; aspect-ratio: 4 / 5; width: 100%; max-width: min(100%, calc((100dvh - 300px) * 0.8)); min-width: 180px; margin: 0 auto; touch-action: none; }
+.swipecard { position: absolute; inset: 0; border-radius: 22px; overflow: hidden; background: var(--card);
+  box-shadow: 0 14px 30px rgba(17,19,24,.22); will-change: transform; user-select: none; -webkit-user-select: none; cursor: grab; }
+.swipecard.behind { transform: scale(.95) translateY(12px); box-shadow: none; filter: brightness(.9); cursor: default; }
+.stamp { position: absolute; top: 24px; padding: 2px 12px; border: 4px solid; border-radius: 10px; font-family: var(--f-display); font-weight: 900;
+  font-size: 1.8rem; opacity: 0; text-transform: uppercase; background: rgba(255,255,255,.18); }
+.stamp.yes { left: 20px; color: #1fb85c; border-color: #1fb85c; transform: rotate(-14deg); }
+.stamp.no { right: 20px; color: #ff4d5e; border-color: #ff4d5e; transform: rotate(14deg); }
+.swipe-actions { display: flex; justify-content: center; gap: 36px; align-items: center; }
+.round { appearance: none; width: 66px; height: 66px; border-radius: 50%; border: 0; background: var(--card); cursor: pointer;
+  box-shadow: 0 4px 14px rgba(17,19,24,.15); font-size: 30px; font-weight: 900; display: grid; place-items: center; line-height: 1; }
+.round.no { color: #ff4d5e; } .round.yes { color: #1fb85c; }
+.round:active { transform: scale(.92); }
+.round:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.hint { text-align: center; font-size: .82rem; color: var(--muted); }
+.feedback { min-height: 3.2em; text-align: center; font-size: .95rem; line-height: 1.35; }
+.feedback b { font-family: var(--f-display); font-weight: 700; }
+
+/* Menü */
+.menu h2 { font-family: var(--f-display); font-weight: 700; font-size: .95rem; margin: 10px 0 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { appearance: none; border: 1.5px solid var(--rule); background: var(--card); color: var(--ink); border-radius: 999px; padding: 7px 12px;
+  font: 600 .9rem var(--f-body); cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+.chip small { font-weight: 600; color: var(--muted); font-size: .72rem; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+.chip[aria-pressed="true"] small { color: inherit; opacity: .7; }
+.switches { display: flex; flex-direction: column; gap: 6px; }
+.switchrow { appearance: none; border: 0; width: 100%; background: var(--card); color: var(--ink); border-radius: 12px; padding: 10px 12px;
+  display: flex; align-items: center; gap: 10px; font: 600 .95rem var(--f-body); cursor: pointer; text-align: left; }
+.switchrow .lbl { flex: 1; }
+.switchrow small { color: var(--muted); font-weight: 600; font-size: .78rem; font-variant-numeric: tabular-nums; }
+.switchrow .sw { width: 42px; height: 26px; border-radius: 13px; background: var(--rule); position: relative; flex: none; transition: background .15s; }
+.switchrow .sw::after { content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.switchrow[aria-checked="true"] .sw { background: var(--ok); }
+.switchrow[aria-checked="true"] .sw::after { transform: translateX(16px); }
+.switchrow:disabled { opacity: .4; cursor: not-allowed; }
+.mode-line { background: var(--card); border-radius: 12px; padding: 12px 14px; line-height: 1.4; font-size: .95rem; }
+.mode-line b { font-family: var(--f-display); font-weight: 700; }
+
+/* Auswertung */
+.result h2 { font-family: var(--f-display); font-weight: 800; font-size: 2.6rem; margin: 6px 0 2px; letter-spacing: -0.04em; }
+.result p { margin: 0 0 6px; line-height: 1.45; max-width: 65ch; }
+.lede { color: var(--muted); }
+.matrix-wrap { overflow-x: auto; background: var(--card); border-radius: 12px; padding: 10px; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: center; padding: 6px 4px; font-size: .85rem; }
+th { font-weight: 700; color: var(--muted); font-size: .75rem; }
+th.row { text-align: left; white-space: nowrap; }
+td { font-weight: 600; border-radius: 4px; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; box-shadow: 0 0 0 1px rgba(127,127,127,.5); flex: none; }
+.insights { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.insights li { background: var(--card); border-radius: 12px; padding: 11px 13px; line-height: 1.4; }
+.row-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.note { font-size: .75rem; color: var(--muted); line-height: 1.45; }
+.loading { margin: auto; color: var(--muted); font-family: var(--f-display); font-weight: 600; text-align: center; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app" id="app"><div class="loading">Lade Gesichter …</div></div>
+
+<script>
+const app = document.getElementById("app");
+let IX = null, P = {}, BY_SHEET = [], round = null;
+const ROUND_SIZE = 20;
+const LEVEL_WHERE = { bundestag: "Bundestag", europa: "Europaparlament", regierung: "Regierungsamt", weitere: "Parteimitglied" };
+
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("pg-" + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("pg-" + k, JSON.stringify(v)); } catch {} },
+};
+
+// ---------- Daten ----------
+function person(i) {
+  const r = IX.people[i];
+  return { i, name: r[0], party: r[1], sub: r[2], level: r[3], body: r[4], sheet: r[5], cell: r[6], artist: r[7], license: r[8], file: r[9], qid: r[10] };
+}
+function faceStyle(p) {
+  const sh = IX.sheets[p.sheet], cols = IX.cell.cols, rows = Math.ceil(sh.n / cols);
+  const c = p.cell % cols, r = Math.floor(p.cell / cols);
+  return `background-image:url('data/${sh.file}');background-size:${cols * 100}% ${rows * 100}%;` +
+    `background-position:${cols > 1 ? c / (cols - 1) * 100 : 0}% ${rows > 1 ? r / (rows - 1) * 100 : 0}%`;
+}
+const preload = new Map();
+function loadSheets(ids) {
+  return Promise.all([...new Set(ids)].map(id => {
+    if (!preload.has(id)) preload.set(id, new Promise(res => { const im = new Image(); im.onload = im.onerror = () => res(); im.src = "data/" + IX.sheets[id].file; }));
+    return preload.get(id);
+  }));
+}
+// Schriftzug-Balken: alle Parteien gleich breit, Reihenfolge wie im App-Symbol
+function spectrumHtml(style) {
+  const keys = ["LINKE", "GRUENE", "SPD", "FDP", "UNION", "BSW", "AFD"].filter(k => P[k]);
+  return `<div class="spectrum" style="${style || ""}" aria-hidden="true">${keys.map(k => `<i style="background:${P[k].color}"></i>`).join("")}</div>`;
+}
+function partyLabel(p) {
+  return p.sub && p.sub !== P[p.party].label ? p.sub : P[p.party].long;
+}
+function whereLabel(p) {
+  if (p.level === "landtag") return p.body ? `Landtag ${p.body}` : "Landtag";
+  if (p.level === "kommunal") return p.body ? `Kommunal: ${p.body}` : "Kommunalpolitik";
+  return LEVEL_WHERE[p.level] || "";
+}
+function countFor(partyKey, levels) {
+  const pt = P[partyKey]; return levels.reduce((s, l) => s + (pt.counts[l] || 0), 0);
+}
+
+// Wählt n Personen einer Partei aus den gewählten Ebenen. Es werden zuerst ganze
+// Bildbögen gezogen, damit eine Runde nur wenige Dateien laden muss.
+function pick(partyKey, levels, n, exclude) {
+  // nach Größe gewichtete Zufallsreihenfolge (Efraimidis-Spirakis), damit Ebenen anteilig vorkommen
+  const pool = IX.sheets.map((s, i) => ({ i, k: Math.pow(Math.random(), 1 / Math.max(1, s.n)), s }))
+    .filter(x => x.s.party === partyKey && levels.includes(x.s.level))
+    .sort((a, b) => b.k - a.k);
+  const out = [];
+  for (const { i } of pool) {
+    for (const pi of shuffle(BY_SHEET[i].slice())) {
+      if (out.length >= n) break;
+      if (!exclude.has(pi)) { out.push(pi); exclude.add(pi); }
+    }
+    if (out.length >= n) break;
+  }
+  return out;
+}
+
+// ---------- Einstellungen ----------
+const settings = store.get("settings", null) || { levels: null, parties: null };
+function allLevels() { return IX.levels.map(l => l.key); }
+function eligible(levels) { return IX.parties.filter(pt => countFor(pt.key, levels) >= IX.minFaces).map(pt => pt.key); }
+
+function renderMenu() {
+  const levels = settings.levels || allLevels();
+  const elig = eligible(levels);
+  let chosen = (settings.parties || IX.parties.filter(p => p.core).map(p => p.key)).filter(k => elig.includes(k));
+  const total = IX.people.length;
+  const mode = chosen.length === 1 ? "single" : chosen.length >= 2 ? "multi" : "none";
+  const modeText = mode === "single"
+    ? `<b>Ja/Nein-Modus:</b> Gehört die Person <b>${esc(P[chosen[0]].zu || "zu " + P[chosen[0]].label)}</b>? Wische nach rechts für Ja, nach links für Nein. Die Hälfte der Gesichter gehört zu ${esc(P[chosen[0]].label)}, die andere Hälfte zu anderen Parteien.`
+    : mode === "multi"
+      ? `<b>Zuordnen:</b> ${chosen.length} Parteien, je ${Math.max(2, Math.round(ROUND_SIZE / chosen.length))} Gesichter pro Runde. Tippe die Partei an, zu der die Person gehört.`
+      : "Wähle mindestens eine Partei.";
+  app.innerHTML = `
+    <header style="flex-direction:column;align-items:flex-start;gap:8px"><h1>parteigesicht</h1>${spectrumHtml("width:220px")}<span class="meta">${total.toLocaleString("de-DE")} Gesichter</span></header>
+    <section class="menu">
+      <h2>Ebene</h2>
+      <div class="chips" id="levels">
+        <button type="button" class="chip" id="lv-all" aria-pressed="${levels.length === IX.levels.length}">Alle</button>
+        ${IX.levels.map(l => `<button type="button" class="chip" id="lv-${l.key}" data-l="${l.key}" aria-pressed="${levels.length !== IX.levels.length && levels.includes(l.key)}">${esc(l.label)} <small>${IX.parties.reduce((s, p) => s + (p.counts[l.key] || 0), 0)}</small></button>`).join("")}
+      </div>
+      <h2>Parteien</h2>
+      <div class="switches" id="parties">
+        ${IX.parties.filter(p => countFor(p.key, allLevels()) > 0).map(p => `<button type="button" class="switchrow" role="switch" id="pt-${p.key}" data-p="${p.key}" aria-checked="${chosen.includes(p.key)}" ${elig.includes(p.key) ? "" : "disabled"}><span class="swatch" style="background:${p.color};width:14px;height:14px;margin:0"></span><span class="lbl">${esc(p.label)}</span><small>${elig.includes(p.key) ? countFor(p.key, levels) : "zu wenige"}</small><span class="sw" aria-hidden="true"></span></button>`).join("")}
+      </div>
+      <p class="note">Parteien mit weniger als ${IX.minFaces} Gesichtern in der gewählten Ebene sind ausgegraut, damit jede Partei gleich oft vorkommen kann.</p>
+    </section>
+    <div class="mode-line">${modeText}</div>
+    <button class="next" id="start" type="button" ${mode === "none" ? "disabled" : ""}>Runde starten</button>
+    <p class="note">Fotos: Wikimedia Commons (freie Lizenzen, Urheber unter jedem Bild). Personen und Ämter: Wikidata und abgeordnetenwatch.de. Stand ${IX.generated}. Hintergründe sind weichgezeichnet, damit Logos und Plakate nichts verraten.</p>`;
+
+  document.getElementById("lv-all").onclick = () => { settings.levels = null; store.set("settings", settings); renderMenu(); };
+  document.querySelectorAll("#levels [data-l]").forEach(b => b.onclick = () => {
+    const cur = settings.levels && settings.levels.length !== IX.levels.length ? settings.levels.slice() : [];
+    const k = b.dataset.l, at = cur.indexOf(k);
+    if (at >= 0) cur.splice(at, 1); else cur.push(k);
+    settings.levels = cur.length ? cur : null; store.set("settings", settings); renderMenu();
+  });
+  document.querySelectorAll("#parties [data-p]").forEach(b => b.onclick = () => {
+    const k = b.dataset.p, at = chosen.indexOf(k);
+    if (at >= 0) chosen.splice(at, 1); else chosen.push(k);
+    settings.parties = chosen; store.set("settings", settings); renderMenu();
+  });
+  document.getElementById("start").onclick = () => startRound(chosen, levels);
+}
+
+// ---------- Runde ----------
+async function startRound(chosen, levels) {
+  const used = new Set();
+  let items;
+  if (chosen.length === 1) {
+    const target = chosen[0];
+    const others = eligible(levels).filter(k => k !== target);
+    const half = ROUND_SIZE / 2;
+    const yes = pick(target, levels, half, used);
+    const no = [];
+    shuffle(others);
+    for (let i = 0; no.length < half && others.length && i < 200; i++) {
+      no.push(...pick(others[i % others.length], levels, 1, used));
+    }
+    items = shuffle([...yes, ...no]).map(person);
+  } else {
+    const per = Math.max(2, Math.round(ROUND_SIZE / chosen.length));
+    items = shuffle(chosen.flatMap(k => pick(k, levels, per, used))).map(person);
+  }
+  app.innerHTML = '<div class="loading">Mische Gesichter …</div>';
+  await loadSheets(items.slice(0, 4).map(p => p.sheet));
+  loadSheets(items.map(p => p.sheet));
+  round = { chosen, levels, items, i: 0, answers: [], single: chosen.length === 1 ? chosen[0] : null };
+  round.single ? renderSwipe() : renderQuestion();
+}
+
+function headerHtml() {
+  const total = round.items.length;
+  return `<header><button class="iconbtn" id="menu" type="button">Menü</button><span class="wordmark">parteigesicht</span><span class="meta">${Math.min(round.i + 1, total)} / ${total} · ${round.answers.filter(a => a.ok).length} richtig</span></header>
+    <div class="progress"><i style="width:${(round.i / total) * 100}%"></i></div>`;
+}
+function bindHeader() { document.getElementById("menu").onclick = renderMenu; }
+function creditHtml(p) {
+  return `Foto: ${esc(p.artist)} · ${esc(p.license)} · <a href="https://commons.wikimedia.org/wiki/File:${encodeURIComponent(p.file)}" target="_blank" rel="noopener">Commons</a> (zugeschnitten, Hintergrund weichgezeichnet)`;
+}
+function logoFor(p) {
+  const L = IX.logos || {};
+  return p.party === "UNION" ? L[p.sub === "CSU" ? "CSU" : "CDU"] : L[p.party];
+}
+function badgeHtml(p) {
+  const lg = logoFor(p);
+  // Das Grünen-Logo hat einen eigenen dunkelgrünen Grund und füllt das Feld
+  return lg ? `<span class="badge ${p.party === "GRUENE" ? "full" : ""}"><img src="data/${lg.path}" alt="Logo ${esc(P[p.party].long)}"></span>` : "";
+}
+function logoCredit(p) {
+  const lg = logoFor(p);
+  return lg && /^CC/.test(lg.license) ? ` · Logo: ${esc(lg.artist || "unbekannt")} · ${esc(lg.license)}` : "";
+}
+function revealHtml(p) {
+  return `${badgeHtml(p)}<div class="reveal"><span class="name">${esc(p.name)}</span>
+    <span class="party"><span class="swatch" style="background:${P[p.party].color}"></span>${esc(partyLabel(p))}</span>
+    <span class="where">${esc(whereLabel(p))}</span></div>`;
+}
+
+// Mehrere Parteien: Kacheln antippen
+function renderQuestion() {
+  const p = round.items[round.i];
+  const parties = round.chosen.map(k => P[k]);
+  // Telefon: höchstens drei Kacheln pro Zeile (4 Parteien: 2 × 2), breiter: alle in einer Zeile
+  const n = parties.length, cols = n <= 3 ? n : n === 4 ? 2 : 3;
+  app.innerHTML = `${headerHtml()}
+    <div class="photo" id="photo"><div class="face" role="img" aria-label="Porträtfoto einer Politikerin oder eines Politikers" style="${faceStyle(p)}"></div></div>
+    <p class="prompt">Zu welcher Partei gehört diese Person?</p>
+    <div class="ballot" id="ballot" style="--n:${cols};--nw:${Math.min(n, 6)}">
+      ${parties.map(pt => `<button type="button" id="b-${pt.key}" data-p="${pt.key}" class="${pt.textDark ? "dark-text" : ""} ${pt.key === "UNION" ? "union" : ""}" style="background:${pt.color}">${esc(pt.label)}<span class="mark" aria-hidden="true"></span></button>`).join("")}
+    </div>
+    <div id="after"></div>
+    <div class="credit">${creditHtml(p)}</div>`;
+  bindHeader();
+  document.querySelectorAll("#ballot button").forEach(b => b.onclick = () => answer(b.dataset.p));
+}
+
+function answer(guess) {
+  const ballot = document.getElementById("ballot");
+  if (ballot.classList.contains("done")) return;
+  const p = round.items[round.i];
+  const ok = guess === p.party;
+  round.answers.push({ truth: p.party, guess, ok, p });
+  ballot.classList.add("done");
+  const picked = document.getElementById("b-" + guess);
+  picked.classList.add("picked"); picked.querySelector(".mark").textContent = "✕";
+  const truthBtn = document.getElementById("b-" + p.party);
+  truthBtn.classList.add("truth"); truthBtn.querySelector(".mark").textContent = "✓";
+  document.querySelector(".meta").textContent = `${round.i + 1} / ${round.items.length} · ${round.answers.filter(a => a.ok).length} richtig`;
+  document.getElementById("photo").insertAdjacentHTML("beforeend",
+    `<span class="verdict ${ok ? "ok" : "bad"}">${ok ? "Richtig" : "Daneben"}</span>${revealHtml(p)}`);
+  document.querySelector(".credit").insertAdjacentHTML("beforeend", logoCredit(p));
+  const last = round.i === round.items.length - 1;
+  document.getElementById("after").innerHTML = `<button class="next" id="next" type="button">${last ? "Auswertung ansehen" : "Nächstes Gesicht"}</button>`;
+  const nx = document.getElementById("next");
+  nx.onclick = () => { if (last) renderResult(); else { round.i++; renderQuestion(); } };
+  nx.focus({ preventScroll: true });
+}
+
+// Eine Partei: Karten wischen (rechts = gehört dazu, links = gehört nicht dazu)
+function renderSwipe() {
+  const tp = P[round.single];
+  const p = round.items[round.i], nextP = round.items[round.i + 1];
+  app.innerHTML = `${headerHtml()}
+    <p class="prompt">Gehört diese Person <b style="color:${tp.key === "UNION" || tp.textDark ? "inherit" : tp.color}">${esc(tp.zu || "zu " + tp.label)}</b>?</p>
+    <div class="deck" id="deck">
+      ${nextP ? `<div class="swipecard behind"><div class="face" style="${faceStyle(nextP)}"></div></div>` : ""}
+      <div class="swipecard" id="card" role="img" aria-label="Porträtfoto"><div class="face" style="${faceStyle(p)}"></div>
+        <span class="stamp yes" id="st-yes">Ja</span><span class="stamp no" id="st-no">Nein</span></div>
+    </div>
+    <div class="credit">${creditHtml(p)}</div>
+    <div class="swipe-actions">
+      <button class="round no" id="btn-no" type="button" aria-label="Nein, gehört nicht zu ${esc(tp.label)}">✕</button>
+      <button class="round yes" id="btn-yes" type="button" aria-label="Ja, gehört zu ${esc(tp.label)}">✓</button>
+    </div>
+    <div class="feedback" id="feedback"><span class="hint">Nach rechts wischen = Ja · nach links = Nein</span></div>`;
+  bindHeader();
+  const card = document.getElementById("card"), stYes = document.getElementById("st-yes"), stNo = document.getElementById("st-no");
+  let startX = 0, startY = 0, dx = 0, dy = 0, dragging = false, done = false;
+  const setPos = (x, y, anim) => {
+    card.style.transition = anim ? "transform .28s ease-out" : "none";
+    card.style.transform = `translate(${x}px, ${y}px) rotate(${x / 18}deg)`;
+    stYes.style.opacity = Math.max(0, Math.min(1, x / 90));
+    stNo.style.opacity = Math.max(0, Math.min(1, -x / 90));
+  };
+  const decide = yes => {
+    if (done) return; done = true;
+    const w = window.innerWidth;
+    setPos((yes ? 1 : -1) * w * 1.2, dy + 40, true);
+    const ok = (p.party === round.single) === yes;
+    round.answers.push({ truth: p.party, guess: yes ? round.single : "_no", yes, ok, p });
+    const fb = document.getElementById("feedback");
+    const lg = logoFor(p);
+    fb.innerHTML = `${lg ? `<span class="badge" style="position:static;display:inline-flex;vertical-align:middle;width:56px;height:34px;margin-right:6px;${p.party === "GRUENE" ? "padding:0" : ""}"><img src="data/${lg.path}" alt="Logo ${esc(P[p.party].long)}" style="${p.party === "GRUENE" ? "width:100%;height:100%;object-fit:cover;max-width:none;max-height:none" : ""}"></span>` : ""}<span style="color:${ok ? "var(--ok)" : "var(--bad)"};font-weight:600">${ok ? "Richtig" : "Daneben"}:</span> <b>${esc(p.name)}</b>, ${esc(partyLabel(p))} · ${esc(whereLabel(p))}`;
+    document.querySelector(".credit").insertAdjacentHTML("beforeend", logoCredit(p));
+    document.querySelector(".meta").textContent = `${round.i + 1} / ${round.items.length} · ${round.answers.filter(a => a.ok).length} richtig`;
+    setTimeout(() => {
+      if (round.i === round.items.length - 1) renderResult();
+      else { round.i++; renderSwipe(); }
+    }, ok ? 900 : 1600);
+  };
+  card.addEventListener("pointerdown", e => { if (done) return; dragging = true; startX = e.clientX; startY = e.clientY; card.setPointerCapture(e.pointerId); card.style.cursor = "grabbing"; });
+  card.addEventListener("pointermove", e => { if (!dragging) return; dx = e.clientX - startX; dy = (e.clientY - startY) * 0.4; setPos(dx, dy, false); });
+  const end = () => {
+    if (!dragging) return; dragging = false; card.style.cursor = "";
+    if (Math.abs(dx) > Math.min(110, window.innerWidth * 0.25)) decide(dx > 0); else { dx = dy = 0; setPos(0, 0, true); }
+  };
+  card.addEventListener("pointerup", end); card.addEventListener("pointercancel", end);
+  document.getElementById("btn-yes").onclick = () => decide(true);
+  document.getElementById("btn-no").onclick = () => decide(false);
+  document.onkeydown = e => { if (!round || !round.single) return; if (e.key === "ArrowRight") decide(true); if (e.key === "ArrowLeft") decide(false); };
+}
+
+// ---------- Auswertung ----------
+function renderResult() {
+  document.onkeydown = null;
+  const A = round.answers, n = A.length, ok = A.filter(a => a.ok).length;
+  const tot = store.get("total", { n: 0, ok: 0 }); tot.n += n; tot.ok += ok; store.set("total", tot);
+  const wrong = A.filter(a => !a.ok);
+  let body = "", chance;
+  if (round.single) {
+    const tp = P[round.single];
+    const members = A.filter(a => a.truth === round.single), others = A.filter(a => a.truth !== round.single);
+    const hit = members.filter(a => a.yes).length, fa = others.filter(a => a.yes);
+    chance = n / 2;
+    const byParty = {}; fa.forEach(a => byParty[a.truth] = (byParty[a.truth] || 0) + 1);
+    const ins = [
+      `Von ${members.length} Personen aus der Partei <b>${esc(tp.label)}</b> hast du <b>${hit}</b> erkannt.`,
+      fa.length ? `${fa.length} von ${others.length} Personen aus anderen Parteien hast du für ${esc(tp.label)} gehalten: ${Object.entries(byParty).map(([k, v]) => `${v}× ${esc(P[k].label)}`).join(", ")}.`
+                : `Niemanden aus einer anderen Partei hast du fälschlich ${esc(tp.label)} zugeordnet.`,
+    ];
+    const yesCount = A.filter(a => a.yes).length;
+    if (yesCount >= n * 0.7) ins.push(`Du hast ${yesCount}-mal Ja gesagt, obwohl nur die Hälfte dazugehörte.`);
+    if (yesCount <= n * 0.3) ins.push(`Du hast nur ${yesCount}-mal Ja gesagt, obwohl die Hälfte dazugehörte.`);
+    body = `<ul class="insights">${ins.map(t => `<li>${t}</li>`).join("")}</ul>`;
+  } else {
+    const parties = round.chosen.map(k => P[k]);
+    chance = n / parties.length;
+    const m = {}; parties.forEach(r => { m[r.key] = {}; parties.forEach(c => m[r.key][c.key] = 0); });
+    A.forEach(a => m[a.truth][a.guess]++);
+    const max = Math.max(1, ...parties.flatMap(r => parties.map(c => m[r.key][c.key])));
+    const per = A.filter(a => a.truth === parties[0].key).length;
+    const conf = [];
+    parties.forEach(r => parties.forEach(c => { if (r.key !== c.key && m[r.key][c.key]) conf.push({ r, c, v: m[r.key][c.key] }); }));
+    conf.sort((a, b) => b.v - a.v);
+    const gc = parties.map(c => ({ c, v: A.filter(a => a.guess === c.key).length })).sort((a, b) => b.v - a.v);
+    const ins = [];
+    if (gc[0].v > per + 1) ins.push(`Du hast <b>${gc[0].v}-mal ${esc(gc[0].c.label)}</b> getippt, obwohl nur ${per} Personen dabei waren. Woran hast du das festgemacht?`);
+    conf.slice(0, 2).forEach(x => ins.push(`${x.v} ${x.v === 1 ? "Person" : "Personen"} aus der Partei <b>${esc(x.r.label)}</b> hast du für <b>${esc(x.c.label)}</b> gehalten.`));
+    if (!ins.length) ins.push("Keine klare Schlagseite in dieser Runde.");
+    body = `<ul class="insights">${ins.map(t => `<li>${t}</li>`).join("")}</ul>
+      <div class="matrix-wrap"><table>
+        <caption class="note" style="caption-side:top;text-align:left;padding-bottom:6px">Zeilen: tatsächliche Partei · Spalten: dein Tipp</caption>
+        <thead><tr><th></th>${parties.map(c => `<th scope="col">${esc(c.label)}</th>`).join("")}</tr></thead>
+        <tbody>${parties.map(r => `<tr><th class="row" scope="row"><span class="swatch" style="background:${r.color}"></span>${esc(r.label)}</th>${parties.map(c => {
+          const v = m[r.key][c.key], a = v / max;
+          const bg = v ? `color-mix(in srgb, var(${r.key === c.key ? "--ok" : "--bad"}) ${12 + a * 55}%, transparent)` : "transparent";
+          return `<td style="background:${bg}">${v || "·"}</td>`;
+        }).join("")}</tr>`).join("")}</tbody></table></div>`;
+  }
+  const share = ok / n;
+  const verdict = share >= .8 ? "Du kennst dich aus." : ok > chance * 1.5 ? "Besser als Zufall, aber oft daneben." : ok >= chance * .8 ? "Ungefähr so gut wie Raten." : "Deine Eindrücke lagen meist falsch.";
+  app.innerHTML = `
+    <header><h1>parteigesicht</h1><span class="meta">Runde beendet</span></header>
+    <section class="result"><h2>${ok} von ${n}</h2>
+      <p>${verdict} Reiner Zufall läge bei etwa ${Math.round(chance)} von ${n}.</p>
+      <p class="lede">Gesamt bisher auf diesem Gerät: ${tot.ok} von ${tot.n} (${Math.round(tot.ok / tot.n * 100)} %).</p></section>
+    ${body}
+    ${wrong.length ? `<details><summary class="note" style="cursor:pointer">Falsch eingeordnet (${wrong.length})</summary>
+      <ul class="note" style="padding-left:18px;margin:6px 0 0">${wrong.map(a => `<li>${esc(a.p.name)} (${esc(partyLabel(a.p))}, ${esc(whereLabel(a.p))})</li>`).join("")}</ul></details>` : ""}
+    <div class="row-actions">
+      <button class="next" id="again" type="button">Neue Runde</button>
+      <button class="next ghost" id="tomenu" type="button">Menü</button>
+    </div>
+    <p class="note">Pro Runde kommen alle gewählten Parteien gleich oft vor. Die Ebenen werden anteilig gemischt; über das Menü kannst du dich auf eine Ebene beschränken.</p>`;
+  document.getElementById("again").onclick = () => startRound(round.chosen, round.levels);
+  document.getElementById("tomenu").onclick = renderMenu;
+}
+
+fetch("data/index.json").then(r => r.json()).then(d => {
+  IX = d; P = Object.fromEntries(d.parties.map(p => [p.key, p]));
+  BY_SHEET = d.sheets.map(() => []);
+  d.people.forEach((r, i) => BY_SHEET[r[5]].push(i));
+  renderMenu();
+}).catch(() => { app.innerHTML = '<div class="loading">Die Daten konnten nicht geladen werden. Bitte Seite neu laden.</div>'; });
+</script>
+
+</html>

@@ -13,6 +13,10 @@ Erfasst sind Politikerinnen und Politiker von der Kommune bis zum Europaparlamen
 
 Wie viele Gesichter es pro Ebene und Partei gibt und wie vollständig die Parlamente abgedeckt sind, steht in [docs/ABDECKUNG.md](docs/ABDECKUNG.md).
 
+## App-Symbol
+
+„Spektrum-Kopf“: Kopf und Schultern aus sechs gleich breiten Streifen, von links nach rechts Linke, SPD, Grüne, Union, BSW, AfD. Die äußeren Streifen liegen nur in den Schultern. Erzeugt mit `pipeline/appicon.swift`, Vorlage in `docs/brand/app-symbol-1024.png`.
+
 ## Herkunft der Daten
 
 | Was | Quelle | Lizenz |
@@ -45,6 +49,7 @@ pipeline/             Datenerhebung, in dieser Reihenfolge:
   report.py           6  Abdeckungsbericht → docs/ABDECKUNG.md
   portrait.swift      Gesicht finden, zuschneiden, Hintergrund weichzeichnen (Vision)
   sprites.swift       25 Porträts je Bildbogen zusammensetzen
+  appicon.swift       App-Symbol „Spektrum-Kopf“ zeichnen (iOS, Web)
   stats.py            Kurzübersicht Partei × Ebene
 data/
   people.json         Ergebnis Schritt 1
@@ -54,7 +59,7 @@ data/
   commons.json        Urheber und Lizenz jedes Fotos
 app/                  Web-App (eine HTML-Datei) + data/ (index.json, Bildbögen)
 ios/                  native SwiftUI-App für iPhone und iPad
-docs/                 Abdeckung, Quellenrecherche
+docs/                 Abdeckung, Quellenrecherche, brand/ (App-Symbol)
 ```
 
 ## Daten neu erzeugen

@@ -1,3 +1,4 @@
+import CoreImage.CIFilterBuiltins
 import ImageIO
 import SwiftUI
 
@@ -14,6 +15,8 @@ struct RootView: View {
                 case .result: ResultView()
                 case .share(let cfg): CodeShareView(config: cfg)
                 case .join(let prefill): JoinView(prefill: prefill ?? "")
+                case .lobby(let cfg): LobbyView(config: cfg)
+                case .countdown(let n, let at): CountdownView(round: n, at: at)
                 }
             }
             .frame(maxWidth: 560)
@@ -185,6 +188,7 @@ struct RoundHeader: View {
             }
             ProgressView(value: Double(game.position), total: Double(max(1, game.items.count))).tint(Theme.ink)
             if game.round.timer > 0 { TimerBar() }
+            if game.round.live, let room = game.live { LiveBar(room: room) }
         }
     }
 }
@@ -457,6 +461,7 @@ struct ResultView: View {
                         .background(RoundedRectangle(cornerRadius: 12).fill(Theme.card))
                 }
                 Text("Gesamt bisher: \(game.totalCorrect) von \(game.totalAnswered)").foregroundStyle(Theme.muted)
+                if game.round.live, let room = game.live { LiveRanking(room: room) }
                 ForEach(insights(), id: \.self) { t in
                     Text(t).padding(12).frame(maxWidth: .infinity, alignment: .leading)
                         .background(RoundedRectangle(cornerRadius: 12).fill(Theme.card))
@@ -472,11 +477,15 @@ struct ResultView: View {
                         }
                     }
                 }
-                HStack {
-                    PrimaryButton(title: "Neue Runde") { var cfg = game.round; cfg.seed = nil; cfg.code = nil; game.start(cfg) }
-                    PrimaryButton(title: "Menü", secondary: true) { game.backToMenu() }
+                if game.round.live {
+                    PrimaryButton(title: "Raum verlassen", secondary: true) { game.backToMenu() }
+                } else {
+                    HStack {
+                        PrimaryButton(title: "Neue Runde") { var cfg = game.round; cfg.seed = nil; cfg.code = nil; game.start(cfg) }
+                        PrimaryButton(title: "Menü", secondary: true) { game.backToMenu() }
+                    }
                 }
-                if game.round.code != nil {
+                if game.round.code != nil && !game.round.live {
                     PrimaryButton(title: "Neuen gemeinsamen Code erzeugen", secondary: true) { game.makeCodeFromRound() }
                 }
                 Text("Schnell-Bonus: ein Punkt je richtige Antwort \(game.round.timer > 0 ? "unter \(Int((Double(game.round.timer) * 0.4).rounded())) s" : "unter 3 s"). Pro Runde kommen alle gewählten Parteien gleich oft vor.")
@@ -639,7 +648,7 @@ struct JoinView: View {
                     .font(Theme.body(15))
                     .padding(14).frame(maxWidth: .infinity, alignment: .leading)
                     .background(RoundedRectangle(cornerRadius: 12).fill(Theme.card))
-                    PrimaryButton(title: "Runde starten") { game.start(d.config) }
+                    PrimaryButton(title: "In den Warteraum") { game.enterLobby(d.config) }
                 } else {
                     PrimaryButton(title: "Beitreten", action: tryJoin)
                 }
@@ -730,5 +739,199 @@ struct PartyLogo: View {
                 .shadow(color: .black.opacity(0.25), radius: 5, y: 2)
                 .accessibilityLabel("Logo \(index.party(person.party).long)")
         }
+    }
+}
+
+// MARK: - Live-Raum
+
+struct LobbyView: View {
+    @EnvironmentObject var game: Game
+    let config: RoundConfig
+    var body: some View {
+        if let room = game.live { LobbyContent(room: room, config: config) }
+    }
+}
+
+/// Warteraum: Code, QR-Code, Name, Mitspielende; der Gastgeber startet für alle
+struct LobbyContent: View {
+    @EnvironmentObject var game: Game
+    @ObservedObject var room: LiveRoom
+    let config: RoundConfig
+    @State private var name = LiveRoom.name
+    @State private var copied = false
+    @FocusState private var nameFocused: Bool
+
+    var body: some View {
+        let code = config.code ?? ""
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                SmallHeader(meta: "Live")
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Code").font(Theme.body(13)).foregroundStyle(Theme.muted)
+                        Text(SharedCode.format(code)).font(Theme.display(26, .heavy)).kerning(1.5)
+                            .minimumScaleFactor(0.6).lineLimit(1)
+                            .frame(maxWidth: .infinity).padding(.vertical, 14)
+                            .background(RoundedRectangle(cornerRadius: 14).fill(Theme.card))
+                            .textSelection(.enabled)
+                        Text(game.settingsSummary(config)).font(Theme.body(12)).foregroundStyle(Theme.muted)
+                    }
+                    if let qr = QRCode.image(SharedCode.link(code).absoluteString) {
+                        Image(decorative: qr, scale: 1).interpolation(.none).resizable()
+                            .frame(width: 112, height: 112).padding(8)
+                            .background(RoundedRectangle(cornerRadius: 12).fill(Color.white))
+                            .accessibilityLabel("QR-Code zum Mitspielen")
+                    }
+                }
+                HStack(spacing: 10) {
+                    PrimaryButton(title: copied ? "Kopiert ✓" : "Code kopieren", secondary: true) {
+                        UIPasteboard.general.string = SharedCode.format(code)
+                        copied = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copied = false }
+                    }
+                    ShareLink(item: SharedCode.link(code), subject: Text("Parteigesicht"), message: Text("Spiel mit! Code " + SharedCode.format(code))) {
+                        Text("Einladen").font(Theme.display(15))
+                            .frame(maxWidth: .infinity, minHeight: 50).foregroundStyle(Theme.ink)
+                            .background(RoundedRectangle(cornerRadius: 14).fill(Theme.card))
+                    }
+                    .buttonStyle(.plain)
+                }
+                Text("Dein Name").font(Theme.display(15))
+                TextField("z. B. Jan", text: $name)
+                    .font(Theme.body(17, .semibold)).textContentType(.nickname).submitLabel(.done)
+                    .focused($nameFocused)
+                    .onSubmit { room.rename(name) }
+                    .onChange(of: nameFocused) { _, f in if !f { room.rename(name) } }
+                    .padding(12).background(RoundedRectangle(cornerRadius: 12).fill(Theme.card))
+                Text("Im Raum").font(Theme.display(15))
+                VStack(spacing: 6) {
+                    if room.players.isEmpty {
+                        playerRow(name: room.failed ? "Keine Verbindung" : "Verbinde …", online: false, host: false, me: false)
+                    }
+                    ForEach(room.players) { p in playerRow(name: p.name, online: p.online, host: p.host, me: p.id == room.me) }
+                }
+                if room.failed || room.error != nil {
+                    Text("\(room.error ?? "Keine Verbindung zum Live-Server.") Ihr könnt trotzdem dieselbe Runde spielen und am Ende die Punkte vergleichen.")
+                        .font(Theme.body(15)).padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.card))
+                    PrimaryButton(title: "Ohne Verbindung starten") { game.startOffline(config) }
+                } else if room.isHost {
+                    PrimaryButton(title: "Alle starten (\(room.onlineCount) \(room.onlineCount == 1 ? "Gerät" : "Geräte"))") { room.startForAll() }
+                    Text("Nach dem Start zählt ein Countdown auf allen Geräten gleichzeitig herunter.")
+                        .font(Theme.body(12)).foregroundStyle(Theme.muted).frame(maxWidth: .infinity).multilineTextAlignment(.center)
+                } else if !room.players.isEmpty {
+                    (Text("Warte, bis ") + Text(room.hostName).bold() + Text(" die Runde startet …"))
+                        .font(Theme.body(15)).padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.card))
+                }
+            }
+            .padding()
+        }
+        .toolbar(.hidden)
+        .onAppear { if name.isEmpty { nameFocused = true } }
+    }
+
+    private func playerRow(name: String, online: Bool, host: Bool, me: Bool) -> some View {
+        HStack(spacing: 10) {
+            Circle().fill(online ? Theme.yes : Theme.rule).frame(width: 10, height: 10)
+            Text(name + (me ? " (du)" : "")).font(Theme.body(16, .semibold)).lineLimit(1)
+                .foregroundStyle(online ? Theme.ink : Theme.muted)
+            Spacer()
+            if host {
+                Text("Gastgeber").font(Theme.display(10)).foregroundStyle(Theme.paper)
+                    .padding(.horizontal, 8).padding(.vertical, 3).background(Capsule().fill(Theme.ink))
+            }
+        }
+        .padding(.horizontal, 12).padding(.vertical, 10)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.card))
+    }
+}
+
+/// Countdown bis zum gemeinsamen Start (Serverzeit, auf allen Geräten gleich)
+struct CountdownView: View {
+    @EnvironmentObject var game: Game
+    let round: Int
+    let at: Date
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.1)) { ctx in
+            let left = at.timeIntervalSince(ctx.date)
+            VStack(spacing: 12) {
+                Spacer()
+                Text("Runde \(round)").font(Theme.body(14)).foregroundStyle(Theme.muted)
+                Text("\(max(1, Int(left.rounded(.up))))").font(Theme.display(120, .black)).monospacedDigit()
+                Text("Gleich geht es los").font(Theme.display(17))
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .toolbar(.hidden)
+        .task(id: round) {
+            let wait = at.timeIntervalSinceNow
+            if wait > 0 { try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000)) }
+            if case .countdown(let n, _) = game.phase, n == round { game.startLiveRound(round) }
+        }
+    }
+}
+
+/// Live-Rangliste im Spiel: kompakte Leiste unter der Fortschrittsanzeige
+struct LiveBar: View {
+    @ObservedObject var room: LiveRoom
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(Array(room.ranked.enumerated()), id: \.element.id) { i, p in
+                    let me = p.id == room.me
+                    Text("\(i + 1). \(me ? "Du" : p.name) \(p.points)")
+                        .font(Theme.body(12, .bold)).monospacedDigit()
+                        .foregroundStyle(me ? Theme.paper : Theme.ink)
+                        .padding(.horizontal, 9).padding(.vertical, 4)
+                        .background(Capsule().fill(me ? Theme.ink : Theme.card))
+                }
+            }
+        }
+        .accessibilityLabel("Live-Rangliste")
+    }
+}
+
+/// Live-Rangliste in der Auswertung, mit „Nächste Runde für alle“ für den Gastgeber
+struct LiveRanking: View {
+    @ObservedObject var room: LiveRoom
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Live-Rangliste").font(Theme.display(17))
+            ForEach(Array(room.ranked.enumerated()), id: \.element.id) { i, p in
+                let me = p.id == room.me
+                HStack(spacing: 10) {
+                    Text("\(i + 1)").font(Theme.display(16, .heavy)).frame(width: 26)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(p.name + (me ? " (du)" : "")).font(Theme.body(15, .bold)).lineLimit(1)
+                        Text("\(p.correct) richtig + \(p.bonus) Bonus\(p.online ? "" : " · offline")").font(Theme.body(12)).foregroundStyle(Theme.muted)
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("\(p.points)").font(Theme.display(17, .heavy)).monospacedDigit()
+                        Text(p.done ? Game.formatTime(p.totalMs) : "läuft \(p.answered)/\(Game.roundSize)").font(Theme.body(12)).foregroundStyle(Theme.muted)
+                    }
+                }
+                .padding(.horizontal, 12).padding(.vertical, 10)
+                .background(RoundedRectangle(cornerRadius: 12).fill(me ? Theme.yes.opacity(0.18) : Theme.card))
+            }
+            if room.isHost {
+                PrimaryButton(title: "Nächste Runde für alle") { room.startForAll() }
+            } else {
+                (Text("Die nächste Runde startet ") + Text(room.hostName).bold() + Text("."))
+                    .font(Theme.body(14)).foregroundStyle(Theme.muted).frame(maxWidth: .infinity)
+            }
+        }
+    }
+}
+
+enum QRCode {
+    static func image(_ text: String) -> CGImage? {
+        let f = CIFilter.qrCodeGenerator()
+        f.message = Data(text.utf8)
+        f.correctionLevel = "M"
+        guard let out = f.outputImage else { return nil }
+        return CIContext().createCGImage(out.transformed(by: CGAffineTransform(scaleX: 8, y: 8)), from: out.extent.applying(CGAffineTransform(scaleX: 8, y: 8)))
     }
 }

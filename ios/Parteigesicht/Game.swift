@@ -22,6 +22,8 @@ struct RoundConfig: Equatable {
     var levels: [String]
     var timer: Int
     var code: String?
+    /// Runde in einem Live-Raum: Fortschritt geht an den Server, Rangliste live
+    var live = false
 }
 
 /// Gemeinsame Runde per Code, 50 Bit in 10 Zeichen:
@@ -90,7 +92,7 @@ final class Game: ObservableObject {
         let ms: Double
     }
 
-    enum Phase { case menu, playing, result, share(RoundConfig), join(String?) }
+    enum Phase { case menu, playing, result, share(RoundConfig), join(String?), lobby(RoundConfig), countdown(Int, Date) }
 
     static let roundSize = 20
 
@@ -110,6 +112,9 @@ final class Game: ObservableObject {
     @Published private(set) var answers: [Answer] = []
     /// Restzeit für das aktuelle Gesicht in Sekunden (nur mit Zeitlimit)
     @Published private(set) var timeLeft: Double = 0
+
+    /// Live-Raum, solange man in einer gemeinsamen Runde mit Server ist
+    @Published private(set) var live: LiveRoom?
 
     @AppStorage("totalAnswered") var totalAnswered = 0
     @AppStorage("totalCorrect") var totalCorrect = 0
@@ -178,17 +183,53 @@ final class Game: ObservableObject {
         var cfg = menuConfig
         cfg.seed = Int.random(in: 0..<0x400000)
         cfg.code = SharedCode.encode(cfg, index: index)
-        phase = .share(cfg)
+        enterLobby(cfg)
     }
 
     func makeCodeFromRound() {
         var cfg = round
         cfg.seed = Int.random(in: 0..<0x400000)
+        cfg.live = false
         cfg.code = SharedCode.encode(cfg, index: index)
-        phase = .share(cfg)
+        enterLobby(cfg)
     }
 
     func joinCode(prefill: String? = nil) { phase = .join(prefill) }
+
+    // MARK: Live-Raum
+
+    /// In den Warteraum des Codes wechseln (verbindet mit dem Server)
+    func enterLobby(_ cfg: RoundConfig) {
+        if live?.config.code != cfg.code {
+            live?.close()
+            let room = LiveRoom(config: cfg)
+            room.onStart = { [weak self] n, at in
+                guard let self else { return }
+                self.cancelTimers()
+                self.phase = .countdown(n, at)
+            }
+            live = room
+            room.connect()
+        }
+        phase = .lobby(cfg)
+    }
+
+    /// Countdown abgelaufen: Runde n im Raum starten, auf allen Geräten mit demselben Startwert
+    func startLiveRound(_ n: Int) {
+        guard let room = live, let base = room.config.seed else { return }
+        var cfg = room.config
+        cfg.seed = LiveRoom.seed(base, round: n)
+        cfg.live = true
+        start(cfg)
+    }
+
+    /// Ohne Verbindung: dieselbe Runde, jedes Gerät spielt für sich
+    func startOffline(_ cfg: RoundConfig) {
+        leaveRoom()
+        start(cfg)
+    }
+
+    func leaveRoom() { live?.close(); live = nil }
 
     func settingsSummary(_ cfg: RoundConfig) -> String {
         let lv = cfg.levels.count == index.levels.count ? "alle Ebenen"
@@ -338,6 +379,9 @@ final class Game: ObservableObject {
         answers.append(a)
         totalAnswered += 1
         if a.correct { totalCorrect += 1 }
+        if round.live {
+            live?.progress(answered: answers.count, correct: correctCount, bonus: bonus, totalMs: totalMs, done: answers.count >= items.count)
+        }
         // Wischen läuft immer von selbst weiter; Zuordnen nur mit Zeitlimit, damit alle im gleichen Takt bleiben
         let delay: Double? = targetParty != nil ? (a.correct ? 0.9 : 1.6) : (round.timer > 0 ? (a.correct ? 1.5 : 2.2) : nil)
         if let delay {
@@ -353,7 +397,7 @@ final class Game: ObservableObject {
         if position + 1 >= items.count { cancelTimers(); phase = .result } else { position += 1; showFace() }
     }
 
-    func backToMenu() { cancelTimers(); phase = .menu }
+    func backToMenu() { cancelTimers(); leaveRoom(); phase = .menu }
 }
 
 extension Color {

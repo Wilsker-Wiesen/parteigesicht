@@ -16,6 +16,7 @@
 		94D23E2B8318DE499ED65BED /* Unbounded.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C1C60C87D40057C2F9BA2BFA /* Unbounded.ttf */; };
 		9E65BFF3BA84AFA3E93F730E /* OFL-Figtree.txt in Resources */ = {isa = PBXBuildFile; fileRef = 621DE2C0CCCFA2E72E3B8265 /* OFL-Figtree.txt */; };
 		A3011A67A15A0D19DBF0C3A8 /* SheetCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7ED4F176980DC0A90D8DD3CF /* SheetCache.swift */; };
+		DE94FB934A63B43F6EF344CE /* LiveRoom.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44120A7AA091D0D070C3457E /* LiveRoom.swift */; };
 		E509FA8E4031AD31FE4C29DD /* Figtree.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DC471A6282BE75C1235640A4 /* Figtree.ttf */; };
 		EEE9667DCF16D75E054CB974 /* Game.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51D03A6152F838C20B33F410 /* Game.swift */; };
 		FBD1579B2069022528B2E708 /* Views.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EB80CE304C705B4F2366310 /* Views.swift */; };
@@ -26,6 +27,7 @@
 		3F2B420EA56C1C5E64C3935E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		3F8C1337CF63F61D327D02AD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		40558535BC04B59E82C681C8 /* Parteigesicht.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Parteigesicht.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		44120A7AA091D0D070C3457E /* LiveRoom.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRoom.swift; sourceTree = "<group>"; };
 		4EB80CE304C705B4F2366310 /* Views.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views.swift; sourceTree = "<group>"; };
 		51D03A6152F838C20B33F410 /* Game.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Game.swift; sourceTree = "<group>"; };
 		621DE2C0CCCFA2E72E3B8265 /* OFL-Figtree.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-Figtree.txt"; sourceTree = "<group>"; };
@@ -51,6 +53,7 @@
 			children = (
 				3F8C1337CF63F61D327D02AD /* Assets.xcassets */,
 				51D03A6152F838C20B33F410 /* Game.swift */,
+				44120A7AA091D0D070C3457E /* LiveRoom.swift */,
 				C24AF699D3ED84B365418EE0 /* Model.swift */,
 				381D433610D316D2CC9396EB /* ParteigesichtApp.swift */,
 				7ED4F176980DC0A90D8DD3CF /* SheetCache.swift */,
@@ -154,6 +157,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EEE9667DCF16D75E054CB974 /* Game.swift in Sources */,
+				DE94FB934A63B43F6EF344CE /* LiveRoom.swift in Sources */,
 				90F31CCE8692731952929E30 /* Model.swift in Sources */,
 				2709D418DC365AA4A3EAE823 /* ParteigesichtApp.swift in Sources */,
 				A3011A67A15A0D19DBF0C3A8 /* SheetCache.swift in Sources */,

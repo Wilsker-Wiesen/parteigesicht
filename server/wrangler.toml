@@ -13,5 +13,5 @@ tag = "v1"
 new_sqlite_classes = ["Room"]
 
 [vars]
-# Nur Seiten von diesen Adressen dürfen Räume öffnen (Komma-getrennt)
-ALLOWED_ORIGINS = "https://wilsker-wiesen.github.io,http://localhost:8766,http://127.0.0.1:8766"
+# Nur diese Absender dürfen Räume öffnen (Komma-getrennt): Web-App, iOS-App (app://), lokale Entwicklung
+ALLOWED_ORIGINS = "https://wilsker-wiesen.github.io,app://parteigesicht,http://localhost:8766,http://127.0.0.1:8766"

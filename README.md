@@ -15,7 +15,7 @@ Wie viele Gesichter es pro Ebene und Partei gibt und wie vollständig die Parlam
 
 ## App-Symbol
 
-„Spektrum-Kopf“: Kopf und Schultern aus sechs gleich breiten Streifen, von links nach rechts Linke, SPD, Grüne, Union, BSW, AfD. Die äußeren Streifen liegen nur in den Schultern. Erzeugt mit `pipeline/appicon.swift`, Vorlage in `docs/brand/app-symbol-1024.png`.
+„Spektrum-Kopf“: Kopf und Schultern aus sieben gleich breiten Streifen, von links nach rechts Linke, Grüne, SPD, FDP, Union, BSW, AfD. Grün ist noch im Kopf zu sehen, das AfD-Blau ganz rechts liegt nur in den Schultern, die Linke ganz links ebenfalls. Erzeugt mit `pipeline/appicon.swift`, Vorlage in `docs/brand/app-symbol-1024.png`.
 
 ## Herkunft der Daten
 

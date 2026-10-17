@@ -160,12 +160,37 @@ td { font-weight: 600; border-radius: 4px; }
 .codein { width: 100%; box-sizing: border-box; font: 700 1.4rem var(--f-display); letter-spacing: .1em; text-align: center; text-transform: uppercase; color: var(--ink); background: var(--card); border: 2px solid var(--rule); border-radius: 14px; padding: 14px 10px; }
 .codein:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .err { color: var(--bad); font-weight: 600; font-size: .9rem; min-height: 1.3em; }
+/* Live-Raum */
+.lobby-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.qr { background: #fff; border-radius: 12px; padding: 8px; width: 112px; height: 112px; box-sizing: border-box; }
+.qr img, .qr svg { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+.players { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.players li { background: var(--card); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.players li .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); flex: none; }
+.players li.off .dot { background: var(--rule); }
+.players li.off { color: var(--muted); }
+.players li .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.players li small { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+.tag { font: 700 .66rem var(--f-display); background: var(--ink); color: var(--paper); border-radius: 999px; padding: 3px 8px; }
+.namein { width: 100%; box-sizing: border-box; font: 600 1rem var(--f-body); color: var(--ink); background: var(--card); border: 2px solid var(--rule); border-radius: 12px; padding: 11px 12px; }
+.namein:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.livebar { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; font-size: .78rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.livebar span { background: var(--card); border-radius: 999px; padding: 4px 9px; white-space: nowrap; }
+.livebar span.me { background: var(--ink); color: var(--paper); }
+.countdown { margin: auto; text-align: center; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.countdown b { font: 900 clamp(5rem, 30vw, 9rem)/1 var(--f-display); }
+.ranking { width: 100%; border-collapse: separate; border-spacing: 0 6px; font-variant-numeric: tabular-nums; }
+.ranking td { background: var(--card); padding: 10px 8px; font-size: .92rem; text-align: left; border-radius: 0; }
+.ranking td:first-child { border-radius: 12px 0 0 12px; font: 800 1rem var(--f-display); width: 2em; text-align: center; }
+.ranking td:last-child { border-radius: 0 12px 12px 0; text-align: right; color: var(--muted); font-weight: 600; }
+.ranking tr.me td { background: color-mix(in srgb, var(--ok) 18%, var(--card)); }
 .loading { margin: auto; color: var(--muted); font-family: var(--f-display); font-weight: 600; text-align: center; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
 <div class="app" id="app"><div class="loading">Lade Gesichter …</div></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
 const app = document.getElementById("app");
 let IX = null, P = {}, BY_SHEET = [], round = null;
@@ -283,9 +308,172 @@ function settingsSummary(cfg) {
   return `${pt} · ${lv} · ${cfg.timer ? cfg.timer + " s pro Gesicht" : "ohne Zeitlimit"}`;
 }
 
+// ---------- Live-Räume (Cloudflare-Server, siehe server/) ----------
+// Lokal gegen `wrangler dev`, online gegen den veröffentlichten Worker. Ohne Server bleibt
+// der Code-Modus wie bisher: gleiche Runde, aber jedes Gerät spielt für sich.
+const LIVE_SERVER = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? "ws://127.0.0.1:8787"
+  : location.hostname.endsWith("github.io") ? "wss://parteigesicht.SUBDOMAIN.workers.dev" : null;
+const liveAvailable = () => !!LIVE_SERVER && !LIVE_SERVER.includes("SUBDOMAIN") && "WebSocket" in window;
+let screen = "menu", live = null, countdownHandle = null;
+function myId() {
+  let id = store.get("pid", null);
+  if (!id) { id = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + "-" + Math.random().toString(36).slice(2)).toLowerCase(); store.set("pid", id); }
+  return id;
+}
+const myName = () => store.get("name", "") || "";
+function liveConnect(cfg) {
+  liveClose();
+  const L = live = { cfg, state: null, me: myId(), offset: 0, retry: 0, playedRound: 0, failed: false, error: "" };
+  const open = () => {
+    if (live !== L) return;
+    let ws;
+    try { ws = new WebSocket(LIVE_SERVER + "/room/" + cfg.code); } catch { L.failed = true; onLiveState(); return; }
+    L.ws = ws;
+    ws.onopen = () => { L.retry = 0; L.failed = false; ws.send(JSON.stringify({ t: "hello", id: L.me, name: myName() || "Gast" })); };
+    ws.onmessage = e => {
+      let m; try { m = JSON.parse(e.data); } catch { return; }
+      if (m.t === "state") { L.offset = m.now - Date.now(); L.state = m; onLiveState(); }
+      if (m.t === "error") { L.error = m.message; onLiveState(); }
+    };
+    ws.onclose = () => {
+      if (live !== L || L.ws !== ws) return;
+      L.retry++;
+      if (L.retry > 5) { L.failed = true; onLiveState(); return; }
+      setTimeout(open, Math.min(8000, 400 * 2 ** L.retry));
+    };
+  };
+  open();
+}
+function liveClose() { const L = live; live = null; clearInterval(countdownHandle); try { L?.ws?.close(); } catch {} }
+function liveSend(m) { if (live?.ws?.readyState === 1) live.ws.send(JSON.stringify(m)); }
+const serverNow = () => Date.now() + (live?.offset || 0);
+const liveSeed = (cfg, n) => (cfg.seed + Math.imul(n, 0x9E3779B1)) >>> 0;  // jede Runde im Raum neue Gesichter
+const isHost = () => !!live?.state?.players.find(p => p.id === live.me && p.host);
+function ranked() {
+  return (live?.state?.players || []).slice().sort((a, b) => b.points - a.points || (b.done - a.done) || a.totalMs - b.totalMs || b.answered - a.answered);
+}
+function liveProgress() {
+  if (!round?.live) return;
+  const A = round.answers;
+  liveSend({ t: "progress", answered: A.length, correct: A.filter(a => a.ok).length, bonus: A.filter(isFast).length,
+    totalMs: Math.round(A.reduce((s, a) => s + (a.guess === "_time" ? round.timer * 1000 : (a.ms || 0)), 0)), done: A.length >= round.items.length });
+}
+function onLiveState() {
+  if (!live) return;
+  const st = live.state;
+  // Runde gestartet: Countdown auf der gemeinsamen Serverzeit, dann alle zugleich los
+  if (st && st.phase === "playing" && st.round !== live.playedRound) {
+    live.playedRound = st.round;
+    renderCountdown(st.startAt, st.round);
+    return;
+  }
+  if (screen === "lobby") updateLobby();
+  if (screen === "round") { const lb = document.getElementById("livebar"); if (lb) lb.innerHTML = liveBarHtml(); }
+  if (screen === "result") updateRanking();
+}
+function liveBarHtml() {
+  return ranked().map((p, i) => `<span class="${p.id === live.me ? "me" : ""}">${i + 1}. ${esc(p.id === live.me ? "Du" : p.name)} ${p.points}</span>`).join("");
+}
+function qrHtml(text) {
+  if (typeof qrcode !== "function") return "";
+  try { const q = qrcode(0, "M"); q.addData(text); q.make(); return q.createSvgTag({ cellSize: 3, margin: 0, scalable: true }); } catch { return ""; }
+}
+
+// Warteraum: Namen, Mitspielende, QR-Code, Start durch den Gastgeber
+function renderLobby(cfg) {
+  screen = "lobby"; stopTimer();
+  if (!live || live.cfg.code !== cfg.code) liveConnect(cfg);
+  const link = codeLink(cfg.code), qr = qrHtml(link);
+  app.innerHTML = `
+    <header><button class="iconbtn" id="menu" type="button">Menü</button><span class="wordmark">parteigesicht</span><span class="meta">Live</span></header>
+    <div class="lobby-top">
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+        <span class="note" style="margin:0">Code</span>
+        <div class="code" style="padding:12px 8px;font-size:clamp(1.3rem,7vw,1.9rem)">${fmtCode(cfg.code)}</div>
+        <span class="note" style="margin:0">${esc(settingsSummary(cfg))}</span>
+      </div>
+      ${qr ? `<div class="qr" role="img" aria-label="QR-Code zum Mitspielen">${qr}</div>` : ""}
+    </div>
+    <div class="row-actions">
+      <button class="next ghost" id="copy" type="button">Code kopieren</button>
+      <button class="next ghost" id="share" type="button">${navigator.share ? "Einladen" : "Link kopieren"}</button>
+    </div>
+    <label for="pname" style="font:700 .95rem var(--f-display)">Dein Name</label>
+    <input class="namein" id="pname" maxlength="20" autocomplete="nickname" placeholder="z. B. Jan" value="${esc(myName())}">
+    <h2 style="font:700 .95rem var(--f-display);margin:4px 0 0">Im Raum</h2>
+    <ul class="players" id="plist"><li class="off"><span class="dot"></span><span class="lbl">Verbinde …</span></li></ul>
+    <div id="lobbyact"></div>`;
+  document.getElementById("menu").onclick = () => { liveClose(); renderMenu(); };
+  document.getElementById("copy").onclick = e => copyText(fmtCode(cfg.code), e.currentTarget);
+  document.getElementById("share").onclick = e => {
+    if (navigator.share) navigator.share({ title: "Parteigesicht", text: "Spiel mit! Code " + fmtCode(cfg.code), url: link }).catch(() => {});
+    else copyText(link, e.currentTarget);
+  };
+  const nameIn = document.getElementById("pname");
+  const saveName = () => { store.set("name", nameIn.value.trim().slice(0, 20)); liveSend({ t: "hello", id: myId(), name: myName() || "Gast" }); };
+  nameIn.onchange = saveName; nameIn.onkeydown = e => { if (e.key === "Enter") { saveName(); nameIn.blur(); } };
+  if (!myName()) nameIn.focus();
+  updateLobby();
+}
+function updateLobby() {
+  const list = document.getElementById("plist"), act = document.getElementById("lobbyact");
+  if (!list || !live) return;
+  const st = live.state;
+  if (st) list.innerHTML = st.players.map(p => `<li class="${p.online ? "" : "off"}"><span class="dot"></span><span class="lbl">${esc(p.name)}${p.id === live.me ? " (du)" : ""}</span>${p.host ? '<span class="tag">Gastgeber</span>' : ""}</li>`).join("");
+  const cfg = live.cfg;
+  if (live.failed || live.error) {
+    act.innerHTML = `<div class="mode-line">${esc(live.error || "Keine Verbindung zum Live-Server.")} Ihr könnt trotzdem dieselbe Runde spielen und am Ende die Punkte vergleichen.</div>
+      <button class="next" id="solo" type="button">Ohne Verbindung starten</button>`;
+    document.getElementById("solo").onclick = () => { const c = live.cfg; liveClose(); startRound(c.parties, c.levels, { seed: c.seed, timer: c.timer, code: c.code }); };
+    return;
+  }
+  if (!st) { act.innerHTML = ""; return; }
+  const host = st.players.find(p => p.host);
+  const count = st.players.filter(p => p.online).length;
+  act.innerHTML = isHost()
+    ? `<button class="next" id="go" type="button">Alle starten (${count} ${count === 1 ? "Gerät" : "Geräte"})</button><p class="note" style="text-align:center">Nach dem Start zählt ein Countdown auf allen Geräten gleichzeitig herunter.</p>`
+    : `<div class="mode-line">Warte, bis <b>${esc(host?.name || "der Gastgeber")}</b> die Runde startet …</div>`;
+  const go = document.getElementById("go");
+  if (go) go.onclick = () => { go.disabled = true; liveSend({ t: "start" }); };
+}
+function renderCountdown(startAt, n) {
+  screen = "countdown"; stopTimer(); clearInterval(countdownHandle);
+  const cfg = live.cfg;
+  app.innerHTML = `<div class="countdown"><span class="note" style="margin:0">Runde ${n} · ${fmtCode(cfg.code)}</span><b id="cd">3</b><span style="font:700 1.05rem var(--f-display)">Gleich geht es los</span></div>`;
+  loadSheets([]);  // Bildbögen der Runde lädt startRound
+  const tick = () => {
+    const left = startAt - serverNow();
+    const el = document.getElementById("cd");
+    if (left <= 0) {
+      clearInterval(countdownHandle);
+      startRound(cfg.parties, cfg.levels, { seed: liveSeed(cfg, n), timer: cfg.timer, code: cfg.code, live: true });
+      return;
+    }
+    if (el) el.textContent = Math.ceil(left / 1000);
+  };
+  tick(); countdownHandle = setInterval(tick, 100);
+}
+function updateRanking() {
+  const t = document.getElementById("ranking");
+  if (!t || !live?.state) return;
+  t.innerHTML = ranked().map((p, i) => `<tr class="${p.id === live.me ? "me" : ""}"><td>${i + 1}</td>
+    <td><b>${esc(p.name)}</b>${p.id === live.me ? " (du)" : ""}<br><span class="note">${p.correct} richtig + ${p.bonus} Bonus${p.online ? "" : " · offline"}</span></td>
+    <td><b style="color:var(--ink);font:800 1.05rem var(--f-display)">${p.points}</b><br>${p.done ? fmtTime(p.totalMs) : `läuft ${p.answered}/${ROUND_SIZE}`}</td></tr>`).join("");
+  const act = document.getElementById("liveact");
+  if (act) {
+    const host = live.state.players.find(p => p.host);
+    act.innerHTML = isHost()
+      ? `<button class="next" id="nextround" type="button">Nächste Runde für alle</button>`
+      : `<div class="mode-line" style="text-align:center">Die nächste Runde startet ${esc(host?.name || "der Gastgeber")}.</div>`;
+    const nr = document.getElementById("nextround");
+    if (nr) nr.onclick = () => { nr.disabled = true; liveSend({ t: "start" }); };
+  }
+}
+
 // Code erzeugt: anzeigen, kopieren, Runde starten
 function renderCodeShare(cfg) {
   const code = encodeCode(cfg);
+  if (liveAvailable()) { renderLobby({ ...cfg, code }); return; }
   app.innerHTML = `
     <header><button class="iconbtn" id="menu" type="button">Menü</button><span class="wordmark">parteigesicht</span><span class="meta">Gemeinsam</span></header>
     <h2 style="font:700 1.05rem var(--f-display);margin:6px 0 0">Euer Code</h2>
@@ -308,6 +496,7 @@ function renderCodeShare(cfg) {
 
 // Code eingeben und beitreten
 function renderJoin(prefill) {
+  screen = "join";
   app.innerHTML = `
     <header><button class="iconbtn" id="menu" type="button">Menü</button><span class="wordmark">parteigesicht</span><span class="meta">Gemeinsam</span></header>
     <h2 style="font:700 1.05rem var(--f-display);margin:6px 0 0">Code eingeben</h2>
@@ -322,6 +511,7 @@ function renderJoin(prefill) {
     if (!cfg) { err.textContent = "Dieser Code ist ungültig. Er hat 10 Zeichen, ohne 0, O, 1 und I."; return; }
     err.textContent = "";
     document.getElementById("joined").innerHTML = `<div class="mode-line"><b>Gemeinsame Runde ${fmtCode(cfg.code)}</b><br>${esc(settingsSummary(cfg))}${cfg.sameData ? "" : "<br><span style=\"color:var(--bad);font-weight:600\">Achtung: Dieses Gerät hat einen anderen Datenstand als das Gerät, das den Code erzeugt hat. Die Gesichter können abweichen. Am besten laden alle die Seite neu.</span>"}</div>`;
+    if (liveAvailable()) { renderLobby(cfg); return; }
     document.getElementById("join").textContent = "Runde starten";
     document.getElementById("join").onclick = () => startRound(cfg.parties, cfg.levels, { seed: cfg.seed, timer: cfg.timer, code: cfg.code });
   };
@@ -336,6 +526,7 @@ function allLevels() { return IX.levels.map(l => l.key); }
 function eligible(levels) { return IX.parties.filter(pt => countFor(pt.key, levels) >= IX.minFaces).map(pt => pt.key); }
 
 function renderMenu() {
+  screen = "menu"; liveClose(); stopTimer();
   const levels = settings.levels || allLevels();
   const elig = eligible(levels);
   let chosen = (settings.parties || IX.parties.filter(p => p.core).map(p => p.key)).filter(k => elig.includes(k));
@@ -415,7 +606,8 @@ async function startRound(chosen, levels, opts = {}) {
   app.innerHTML = '<div class="loading">Mische Gesichter …</div>';
   await loadSheets(items.slice(0, 4).map(p => p.sheet));
   loadSheets(items.map(p => p.sheet));
-  round = { chosen, levels, items, i: 0, answers: [], single: chosen.length === 1 ? chosen[0] : null, timer: opts.timer || 0, code: opts.code || null };
+  round = { chosen, levels, items, i: 0, answers: [], single: chosen.length === 1 ? chosen[0] : null, timer: opts.timer || 0, code: opts.code || null, live: !!opts.live };
+  screen = "round";
   round.single ? renderSwipe() : renderQuestion();
 }
 
@@ -424,7 +616,8 @@ function headerHtml() {
   round.t0 = performance.now();
   return `<header><button class="iconbtn" id="menu" type="button">Menü</button><span class="wordmark">parteigesicht</span><span class="meta">${Math.min(round.i + 1, total)} / ${total} · ${round.answers.filter(a => a.ok).length} richtig</span></header>
     <div class="progress"><i style="width:${(round.i / total) * 100}%"></i></div>
-    ${round.timer ? '<div class="timer" id="timer" aria-live="off"><i></i><b></b></div>' : ""}`;
+    ${round.timer ? '<div class="timer" id="timer" aria-live="off"><i></i><b></b></div>' : ""}
+    ${round.live ? `<div class="livebar" id="livebar" aria-label="Live-Rangliste">${liveBarHtml()}</div>` : ""}`;
 }
 function bindHeader() { document.getElementById("menu").onclick = () => { stopTimer(); renderMenu(); }; }
 
@@ -494,6 +687,7 @@ function answer(guess) {
   const timedOut = guess === "_time";
   const ok = !timedOut && guess === p.party;
   round.answers.push({ truth: p.party, guess, ok, p, ms: performance.now() - round.t0 });
+  liveProgress();
   ballot.classList.add("done");
   if (!timedOut) { const picked = document.getElementById("b-" + guess); picked.classList.add("picked"); picked.querySelector(".mark").textContent = "✕"; }
   const truthBtn = document.getElementById("b-" + p.party);
@@ -546,6 +740,7 @@ function renderSwipe() {
     else { card.style.transition = "filter .3s"; card.style.filter = "grayscale(1) brightness(.7)"; }
     const ok = !timedOut && (p.party === round.single) === yes;
     round.answers.push({ truth: p.party, guess: timedOut ? "_time" : yes ? round.single : "_no", yes, ok, p, ms: performance.now() - round.t0 });
+    liveProgress();
     const fb = document.getElementById("feedback");
     const lg = logoFor(p);
     fb.innerHTML = `${lg ? `<span class="badge" style="position:static;display:inline-flex;vertical-align:middle;width:56px;height:34px;margin-right:6px;${p.party === "GRUENE" ? "padding:0" : ""}"><img src="data/${lg.path}" alt="Logo ${esc(P[p.party].long)}" style="${p.party === "GRUENE" ? "width:100%;height:100%;object-fit:cover;max-width:none;max-height:none" : ""}"></span>` : ""}<span style="color:${ok ? "var(--ok)" : "var(--bad)"};font-weight:600">${timedOut ? "Zeit um" : ok ? (isFast(round.answers.at(-1)) ? "Richtig, schnell +1" : "Richtig") : "Daneben"}:</span> <b>${esc(p.name)}</b>, ${esc(partyLabel(p))} · ${esc(whereLabel(p))}`;
@@ -571,7 +766,7 @@ function renderSwipe() {
 
 // ---------- Auswertung ----------
 function renderResult() {
-  document.onkeydown = null; stopTimer();
+  document.onkeydown = null; stopTimer(); screen = "result";
   const A = round.answers, n = A.length, ok = A.filter(a => a.ok).length;
   const tot = store.get("total", { n: 0, ok: 0 }); tot.n += n; tot.ok += ok; store.set("total", tot);
   const wrong = A.filter(a => !a.ok);
@@ -632,16 +827,19 @@ function renderResult() {
       ${round.timer ? `<p>Durchschnittlich ${(A.filter(a => a.guess !== "_time").reduce((s, a) => s + (a.ms || 0), 0) / Math.max(1, A.filter(a => a.guess !== "_time").length) / 1000).toFixed(1)} s pro Antwort bei ${round.timer} s Limit.</p>` : ""}
       ${round.code ? `<p class="lede">Gemeinsame Runde <b style="font-family:var(--f-display);letter-spacing:.06em">${fmtCode(round.code)}</b>: Die meisten Punkte gewinnen, bei Gleichstand die kürzere Gesamtzeit.</p>` : ""}
       <p class="lede">Gesamt bisher auf diesem Gerät: ${tot.ok} von ${tot.n} (${Math.round(tot.ok / tot.n * 100)} %).</p></section>
+    ${round.live ? `<h2 style="font:700 1.05rem var(--f-display);margin:4px 0 -6px">Live-Rangliste</h2><table class="ranking" id="ranking"></table><div id="liveact"></div>` : ""}
     ${body}
     ${wrong.length ? `<details><summary class="note" style="cursor:pointer">Falsch eingeordnet (${wrong.length})</summary>
       <ul class="note" style="padding-left:18px;margin:6px 0 0">${wrong.map(a => `<li>${esc(a.p.name)} (${esc(partyLabel(a.p))}, ${esc(whereLabel(a.p))})${a.guess === "_time" ? " – Zeit um" : ""}</li>`).join("")}</ul></details>` : ""}
-    <div class="row-actions">
-      <button class="next" id="again" type="button">Neue Runde</button>
-      <button class="next ghost" id="tomenu" type="button">Menü</button>
+    <div class="row-actions" ${round.live ? 'style="grid-template-columns:1fr"' : ""}>
+      ${round.live ? "" : '<button class="next" id="again" type="button">Neue Runde</button>'}
+      <button class="next ghost" id="tomenu" type="button">${round.live ? "Raum verlassen" : "Menü"}</button>
     </div>
-    ${round.code ? `<button class="next ghost" id="newcode" type="button">Neuen gemeinsamen Code erzeugen</button>` : ""}
+    ${round.code && !round.live ? `<button class="next ghost" id="newcode" type="button">Neuen gemeinsamen Code erzeugen</button>` : ""}
     <p class="note">Schnell-Bonus: ein Punkt je richtige Antwort ${round.timer ? `unter ${Math.round(round.timer * 0.4)} s` : "unter 3 s"}. Pro Runde kommen alle gewählten Parteien gleich oft vor. Die Ebenen werden anteilig gemischt; über das Menü kannst du dich auf eine Ebene beschränken.</p>`;
-  document.getElementById("again").onclick = () => startRound(round.chosen, round.levels, { timer: round.timer });
+  const ag = document.getElementById("again");
+  if (ag) ag.onclick = () => startRound(round.chosen, round.levels, { timer: round.timer });
+  if (round.live) updateRanking();
   document.getElementById("tomenu").onclick = renderMenu;
   const nc = document.getElementById("newcode");
   if (nc) nc.onclick = () => renderCodeShare({ seed: Math.floor(Math.random() * 0x400000), parties: round.chosen.slice(), levels: round.levels.slice(), timer: round.timer });

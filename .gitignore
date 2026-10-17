@@ -14,3 +14,7 @@ __pycache__/
 # erster Prototyp (nur Bundestag), ersetzt durch app/
 parteiraten/
 pipeline/appicon
+
+# Server (Cloudflare)
+server/node_modules/
+server/.wrangler/

@@ -13,7 +13,9 @@ Erfasst sind Politikerinnen und Politiker von der Kommune bis zum Europaparlamen
 - **Ebenen:** Bundestag, Europaparlament, Landtage, Regierungen, Kommunal (Bürgermeister, Landräte, Räte) und weitere Parteimitglieder. Ebenen lassen sich kombinieren.
 - **Zeitlimit:** Optional 5 bis 30 Sekunden pro Gesicht. Läuft die Zeit ab, zählt das Gesicht als falsch, und es geht automatisch weiter.
 - **Schnell-Bonus:** Jede richtige Antwort innerhalb von 40 % des Zeitlimits (ohne Limit: unter 3 s) bringt einen Bonuspunkt. Die Auswertung zeigt Punkte, Treffer, Bonus und Gesamtzeit; bei gemeinsamen Runden gewinnen die meisten Punkte, bei Gleichstand die kürzere Gesamtzeit.
-- **Gemeinsam spielen:** Ein Gerät erzeugt einen Code (10 Zeichen, z. B. `SPXP2-25ZYH`), die anderen geben ihn ein oder öffnen den Link. Jedes Gerät bekommt dieselben Gesichter in derselben Reihenfolge, auch ohne gemeinsames Netz: Der Code enthält den Zufalls-Startwert, Parteien, Ebenen und Zeitlimit. Am Ende vergleichen alle ihre Ergebnisse. Eine Live-Verbindung zwischen den Geräten gibt es nicht; dafür bräuchte es einen Server.
+- **Gemeinsam spielen:** Ein Gerät erzeugt einen Code (10 Zeichen, z. B. `SPXP2-25ZYH`), die anderen geben ihn ein, öffnen den Link oder scannen den QR-Code. Der Code enthält den Zufalls-Startwert, Parteien, Ebenen und Zeitlimit; jedes Gerät zieht daraus dieselben Gesichter in derselben Reihenfolge.
+  - **Live** (mit Server): Warteraum mit Namen, der Gastgeber startet für alle, ein Countdown läuft überall gleichzeitig, eine Live-Rangliste zeigt Punkte und Fortschritt, „Nächste Runde für alle“ startet mit neuen Gesichtern im selben Raum.
+  - **Ohne Server** (oder ohne Verbindung): dieselbe Runde, jedes Gerät spielt für sich, am Ende werden die Punkte verglichen.
 - **Parteien:** Union, SPD, Grüne, AfD und Linke sind vorausgewählt. FDP, BSW, Freie Wähler, Piraten und andere lassen sich dazuschalten, sobald es in der gewählten Ebene mindestens 20 Gesichter gibt.
 
 Wie viele Gesichter es pro Ebene und Partei gibt und wie vollständig die Parlamente abgedeckt sind, steht in [docs/ABDECKUNG.md](docs/ABDECKUNG.md).
@@ -69,6 +71,7 @@ data/
   commons.json        Urheber und Lizenz jedes Fotos
 app/                  Web-App (eine HTML-Datei) + data/ (index.json, Bildbögen)
 ios/                  native SwiftUI-App für iPhone und iPad
+server/               Live-Räume: Cloudflare Worker + Durable Objects (kostenloser Plan)
 docs/                 Abdeckung, Quellenrecherche, brand/ (App-Symbol)
 ```
 
@@ -94,6 +97,21 @@ Abfragen und Downloads landen in `data/cache/` (nicht im Repository). Ein zweite
 ## Web-App veröffentlichen
 
 Automatisch: Jeder Push auf `main`, der etwas in `app/` ändert, veröffentlicht die Seite über GitHub Actions (`.github/workflows/pages.yml`) unter https://wilsker-wiesen.github.io/parteigesicht/. Ersatzweise von Hand: `sh pipeline/publish_pages.sh` (Zweig `gh-pages`).
+
+## Live-Server (Cloudflare)
+
+`server/` enthält einen Cloudflare Worker. Jeder Spielcode ist ein Raum (Durable Object), die Geräte verbinden sich per WebSocket. Gespeichert werden nur Spielname und Punkte, und nur bis der Raum sechs Stunden unbenutzt war. Läuft im kostenlosen Workers-Plan.
+
+```bash
+cd server
+npm install
+npx wrangler dev        # lokal auf Port 8787, zusammen mit der Web-App auf Port 8766
+npm test                # Rauchtest mit zwei Spielern gegen wrangler dev
+npx wrangler login      # einmalig, mit dem eigenen Cloudflare-Konto
+npx wrangler deploy     # veröffentlichen
+```
+
+Die Adresse des veröffentlichten Workers steht in `app/index.html` (`LIVE_SERVER`). Erlaubte Webseiten: `ALLOWED_ORIGINS` in `server/wrangler.toml`.
 
 ## Web-App lokal starten
 

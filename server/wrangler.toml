@@ -1,0 +1,17 @@
+# Cloudflare Worker für Live-Räume von Parteigesicht.
+# Kostenlos im Workers-Free-Plan: Durable Objects mit SQLite-Speicher.
+name = "parteigesicht"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
+
+[vars]
+# Nur Seiten von diesen Adressen dürfen Räume öffnen (Komma-getrennt)
+ALLOWED_ORIGINS = "https://wilsker-wiesen.github.io,http://localhost:8766,http://127.0.0.1:8766"

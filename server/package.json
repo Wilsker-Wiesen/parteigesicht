@@ -1,0 +1,13 @@
+{
+  "name": "parteigesicht-server",
+  "private": true,
+  "description": "Live-Räume für gemeinsame Runden von Parteigesicht (Cloudflare Worker + Durable Objects)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node test/smoke.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^3.114.17"
+  }
+}

@@ -21,7 +21,8 @@ func rgb(_ hex: UInt32) -> CGColor {
 }
 
 let background = rgb(0xEEF0F4)
-let stripes: [UInt32] = [0xB8236E, 0x3F8F2A, 0xE3000F, 0xFFD500, 0x1D1D1B, 0xF06BB0, 0x009EE0]  // Linke, Grüne, SPD, FDP, Union, BSW, AfD
+// Offizielle Parteifarben (Wikidata P465, siehe pipeline/colors.py)
+let stripes: [UInt32] = [0xBE3075, 0x409A3C, 0xE3000F, 0xFFED00, 0x000000, 0x792351, 0x009EE0]  // Linke, Grüne, SPD, FDP, Union, BSW, AfD
 
 let cs = CGColorSpace(name: CGColorSpace.sRGB)!
 let ctx = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0, space: cs,

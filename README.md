@@ -13,6 +13,10 @@ Erfasst sind Politikerinnen und Politiker von der Kommune bis zum Europaparlamen
 
 Wie viele Gesichter es pro Ebene und Partei gibt und wie vollständig die Parlamente abgedeckt sind, steht in [docs/ABDECKUNG.md](docs/ABDECKUNG.md).
 
+## Parteifarben
+
+Alle Farben stammen aus Wikidata (Eigenschaft P465, `pipeline/colors.py`). Das sind die Farben, mit denen Wahlberichte und Statistikämter Parteien kennzeichnen, und sie sind gut voneinander zu unterscheiden. Die Farben der Logos taugen dafür nicht immer: Die Linke nutzt im Logo reines Rot wie die SPD, die FDP seit 2026 Marineblau ähnlich der AfD. BSW (#792351) ist mit dem offiziellen Logo abgeglichen. Für die Union gilt die CDU-Farbe Schwarz. Helle Farben bekommen auf den Kacheln dunkle Schrift.
+
 ## App-Symbol
 
 „Spektrum-Kopf“: Kopf und Schultern aus sieben gleich breiten Streifen, von links nach rechts Linke, Grüne, SPD, FDP, Union, BSW, AfD. Grün ist noch im Kopf zu sehen, das AfD-Blau ganz rechts liegt nur in den Schultern, die Linke ganz links ebenfalls. Erzeugt mit `pipeline/appicon.swift`, Vorlage in `docs/brand/app-symbol-1024.png`.
@@ -45,6 +49,7 @@ pipeline/             Datenerhebung, in dieser Reihenfolge:
   merge.py            3  alles zusammenführen, Ebenen festlegen → data/faces.json
   images.py           4  Lizenzangaben und Fotos von Commons laden
   logos.py            5a Parteilogos von Commons für die Auflösung → app/data/logos/
+  colors.py           Parteifarben aus Wikidata (P465) → config/parties.json
   build.py            5  Porträts aufbereiten, Bildbögen bauen → app/data/
   report.py           6  Abdeckungsbericht → docs/ABDECKUNG.md
   portrait.swift      Gesicht finden, zuschneiden, Hintergrund weichzeichnen (Vision)

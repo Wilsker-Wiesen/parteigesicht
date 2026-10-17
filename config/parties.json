@@ -6,7 +6,7 @@
    "key": "GRUENE",
    "label": "Grüne",
    "long": "Bündnis 90/Die Grünen",
-   "color": "#3f8f2a",
+   "color": "#409A3C",
    "core": true,
    "qids": {
     "Q49766": "Grüne",
@@ -15,7 +15,9 @@
    "commons": [
     "Members of Bündnis 90/Die Grünen"
    ],
-   "zu": "zu den Grünen"
+   "zu": "zu den Grünen",
+   "textDark": false,
+   "colorSource": "Wikidata P465"
   },
   {
    "key": "SPD",
@@ -29,13 +31,15 @@
    "commons": [
     "Members of the SPD"
    ],
-   "zu": "zur SPD"
+   "zu": "zur SPD",
+   "textDark": false,
+   "colorSource": "Wikidata P465"
   },
   {
    "key": "UNION",
    "label": "Union",
    "long": "CDU/CSU",
-   "color": "#1d1d1b",
+   "color": "#000000",
    "core": true,
    "qids": {
     "Q49762": "CDU",
@@ -45,7 +49,9 @@
     "Members of the CDU",
     "Members of the CSU"
    ],
-   "zu": "zur Union"
+   "zu": "zur Union",
+   "textDark": false,
+   "colorSource": "Wikidata P465"
   },
   {
    "key": "AFD",
@@ -59,13 +65,15 @@
    "commons": [
     "Members of Alternative für Deutschland"
    ],
-   "zu": "zur AfD"
+   "zu": "zur AfD",
+   "textDark": false,
+   "colorSource": "Wikidata P465"
   },
   {
    "key": "LINKE",
    "label": "Linke",
    "long": "Die Linke",
-   "color": "#b8236e",
+   "color": "#BE3075",
    "core": true,
    "qids": {
     "Q49764": "Die Linke"
@@ -73,13 +81,15 @@
    "commons": [
     "Members of Die Linke"
    ],
-   "zu": "zur Linken"
+   "zu": "zur Linken",
+   "textDark": false,
+   "colorSource": "Wikidata P465"
   },
   {
    "key": "FDP",
    "label": "FDP",
    "long": "FDP",
-   "color": "#ffd500",
+   "color": "#FFED00",
    "textDark": true,
    "core": false,
    "qids": {
@@ -88,13 +98,14 @@
    "commons": [
     "Members of the FDP"
    ],
-   "zu": "zur FDP"
+   "zu": "zur FDP",
+   "colorSource": "Wikidata P465"
   },
   {
    "key": "BSW",
    "label": "BSW",
    "long": "Bündnis Sahra Wagenknecht",
-   "color": "#7d254f",
+   "color": "#792351",
    "core": false,
    "qids": {
     "Q123121346": "BSW"
@@ -102,13 +113,15 @@
    "commons": [
     "Members of the BSW"
    ],
-   "zu": "zum BSW"
+   "zu": "zum BSW",
+   "textDark": false,
+   "colorSource": "Wikidata P465"
   },
   {
    "key": "FW",
    "label": "Freie Wähler",
    "long": "Freie Wähler",
-   "color": "#f28c00",
+   "color": "#F7A800",
    "core": false,
    "qids": {
     "Q327389": "Freie Wähler"
@@ -116,13 +129,15 @@
    "commons": [
     "Members of Freie Wähler"
    ],
-   "zu": "zu den Freien Wählern"
+   "zu": "zu den Freien Wählern",
+   "textDark": true,
+   "colorSource": "Wikidata P465"
   },
   {
    "key": "PIRATEN",
    "label": "Piraten",
    "long": "Piratenpartei",
-   "color": "#ff8800",
+   "color": "#FF820A",
    "core": false,
    "qids": {
     "Q13129": "Piraten"
@@ -130,13 +145,15 @@
    "commons": [
     "Members of Piratenpartei Deutschland"
    ],
-   "zu": "zu den Piraten"
+   "zu": "zu den Piraten",
+   "textDark": true,
+   "colorSource": "Wikidata P465"
   },
   {
    "key": "OEDP",
    "label": "ÖDP",
    "long": "ÖDP",
-   "color": "#ff6b00",
+   "color": "#ED6E2D",
    "core": false,
    "qids": {
     "Q294989": "ÖDP"
@@ -144,7 +161,9 @@
    "commons": [
     "Members of Ökologisch-Demokratische Partei"
    ],
-   "zu": "zur ÖDP"
+   "zu": "zur ÖDP",
+   "textDark": false,
+   "colorSource": "Wikidata P465"
   },
   {
    "key": "VOLT",
@@ -158,7 +177,9 @@
    "commons": [
     "Members of Volt Germany"
    ],
-   "zu": "zu Volt"
+   "zu": "zu Volt",
+   "textDark": false,
+   "colorSource": "eigene Wahl"
   },
   {
    "key": "PARTEI",
@@ -169,7 +190,9 @@
    "qids": {
     "Q22748": "Die PARTEI"
    },
-   "zu": "zur PARTEI"
+   "zu": "zur PARTEI",
+   "textDark": false,
+   "colorSource": "Wikidata P465"
   },
   {
    "key": "SSW",
@@ -183,7 +206,9 @@
    "commons": [
     "Members of Südschleswigscher Wählerverband"
    ],
-   "zu": "zum SSW"
+   "zu": "zum SSW",
+   "textDark": false,
+   "colorSource": "Wikidata P465"
   }
  ]
 }

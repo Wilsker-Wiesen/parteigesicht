@@ -73,7 +73,8 @@ struct SpectrumBar: View {
     let index: GameIndex
     var body: some View {
         HStack(spacing: 4) {
-            ForEach(["GRUENE", "SPD", "UNION", "AFD", "LINKE", "FDP"], id: \.self) { k in
+            // Reihenfolge wie im App-Symbol
+            ForEach(["LINKE", "GRUENE", "SPD", "FDP", "UNION", "BSW", "AFD"], id: \.self) { k in
                 if let p = index.parties.first(where: { $0.key == k }) {
                     Capsule().fill(Color(hex: p.color))
                 }

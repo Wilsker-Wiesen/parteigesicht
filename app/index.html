@@ -187,9 +187,9 @@ function loadSheets(ids) {
     return preload.get(id);
   }));
 }
-// Schriftzug-Balken: alle Parteien gleich breit
+// Schriftzug-Balken: alle Parteien gleich breit, Reihenfolge wie im App-Symbol
 function spectrumHtml(style) {
-  const keys = ["GRUENE", "SPD", "UNION", "AFD", "LINKE", "FDP"].filter(k => P[k]);
+  const keys = ["LINKE", "GRUENE", "SPD", "FDP", "UNION", "BSW", "AFD"].filter(k => P[k]);
   return `<div class="spectrum" style="${style || ""}" aria-hidden="true">${keys.map(k => `<i style="background:${P[k].color}"></i>`).join("")}</div>`;
 }
 function partyLabel(p) {

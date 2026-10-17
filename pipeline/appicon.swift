@@ -27,6 +27,8 @@ let background = rgb(0xEEF0F4)
 // "a" = erste Fassung (BSW 3 Spalten, Raster mittig), "b" = BSW 2 Spalten, Raster weit nach rechts,
 // "c" = BSW 2 Spalten, Raster leicht nach rechts (AfD 2 Spalten sichtbar, BSW noch im Kopf, Linke 3 Spalten)
 let variant = CommandLine.arguments.count > 3 ? CommandLine.arguments[3] : "c"
+// 4. Argument "transparent": ohne Hintergrund, für das Symbol neben der Wortmarke
+let transparent = CommandLine.arguments.count > 4 && CommandLine.arguments[4] == "transparent"
 let parties: [(color: UInt32, columns: Int)] = [
     (0xBE3075, 3),                    // Linke
     (0x409A3C, 3),                    // Grüne
@@ -40,10 +42,10 @@ let columnColors = parties.flatMap { Array(repeating: $0.color, count: $0.column
 
 let cs = CGColorSpace(name: CGColorSpace.sRGB)!
 let ctx = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0, space: cs,
-                    bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+                    bitmapInfo: (transparent ? CGImageAlphaInfo.premultipliedLast : CGImageAlphaInfo.noneSkipLast).rawValue)!
 // Koordinaten wie im SVG-Entwurf: Ursprung oben links
 ctx.translateBy(x: 0, y: CGFloat(size)); ctx.scaleBy(x: s, y: -s)
-ctx.setFillColor(background); ctx.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
+if !transparent { ctx.setFillColor(background); ctx.fill(CGRect(x: 0, y: 0, width: 100, height: 100)) }
 
 // Umriss: Kopf und Schultern (wie Entwurf M2)
 let bust = CGMutablePath()

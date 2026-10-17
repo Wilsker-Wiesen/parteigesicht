@@ -538,7 +538,7 @@ function renderMenu() {
       ? `<b>Zuordnen:</b> ${chosen.length} Parteien, je ${Math.max(2, Math.round(ROUND_SIZE / chosen.length))} Gesichter pro Runde. Tippe die Partei an, zu der die Person gehört.`
       : "Wähle mindestens eine Partei.";
   app.innerHTML = `
-    <header style="flex-direction:column;align-items:flex-start;gap:8px"><h1>parteigesicht</h1>${spectrumHtml("width:220px")}<span class="meta">${total.toLocaleString("de-DE")} Gesichter</span></header>
+    <header style="align-items:stretch;gap:12px"><div style="display:flex;flex-direction:column;align-items:flex-start;gap:8px"><h1>parteigesicht</h1>${spectrumHtml("width:220px")}<span class="meta">${total.toLocaleString("de-DE")} Gesichter</span></div><img src="logo.png" alt="" aria-hidden="true" id="headlogo" style="margin-left:auto;align-self:center;width:86px;height:86px;margin-block:-8px;object-fit:contain"></header>
     <section class="menu">
       <h2>Ebene</h2>
       <div class="chips" id="levels">

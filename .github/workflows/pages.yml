@@ -30,7 +30,7 @@ jobs:
         # für Pages bekommt sie Doctype und html-Element davor.
         run: |
           mkdir -p _site
-          cp -R app/data app/favicon.png app/apple-touch-icon.png _site/
+          cp -R app/data app/favicon.png app/apple-touch-icon.png app/logo.png _site/
           { printf '<!doctype html>\n<html lang="de">\n'; cat app/index.html; printf '\n</html>\n'; } > _site/index.html
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5

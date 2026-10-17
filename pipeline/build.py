@@ -68,6 +68,8 @@ def main():
         "levels": [{"key": l["key"], "label": l["label"]} for l in levels["levels"]]
                   + [{"key": levels["fallback"]["key"], "label": levels["fallback"]["label"]}],
         "sheets": sheets,
+        # Parteilogos für die Auflösung (pipeline/logos.py); Schlüssel: Partei, bei der Union CDU/CSU
+        "logos": load_json("app/data/logos/logos.json") if os.path.exists(os.path.join(OUT, "logos", "logos.json")) else {},
         "fields": ["name", "party", "sub", "level", "body", "sheet", "cell", "artist", "license", "file", "wikidata"],
         "people": people,
     }

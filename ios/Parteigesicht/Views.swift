@@ -1,3 +1,4 @@
+import ImageIO
 import SwiftUI
 
 struct RootView: View {
@@ -168,10 +169,13 @@ struct RoundHeader: View {
 
 struct Credit: View {
     let person: Person
+    /// Logo-Urheber nach der Auflösung, nur bei CC-lizenzierten Logos nötig
+    var logo: GameIndex.Logo? = nil
     var body: some View {
         HStack(spacing: 4) {
             Text("Foto: \(person.artist) · \(person.license) ·")
             if let url = person.commonsURL { Link("Commons", destination: url) }
+            if let logo, logo.license.hasPrefix("CC") { Text("· Logo: \(logo.artist ?? "unbekannt") · \(logo.license)") }
         }
         .font(Theme.body(11)).foregroundStyle(Theme.muted).lineLimit(2)
     }
@@ -199,6 +203,7 @@ struct RevealOverlay: View {
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .background(LinearGradient(colors: [.clear, .clear, .black.opacity(0.8)], startPoint: .top, endPoint: .bottom))
+        .overlay(alignment: .topTrailing) { PartyLogo(person: person, index: game.index).padding(12) }
     }
 }
 
@@ -250,7 +255,7 @@ struct ChoiceView: View {
                         answered = nil; game.advance()
                     }
                 }
-                Credit(person: p)
+                Credit(person: p, logo: answered != nil ? ix.logo(for: p) : nil)
                 Spacer(minLength: 0)
             }
             .padding()
@@ -312,13 +317,14 @@ struct SwipeView: View {
                 }
             }
             .frame(maxHeight: 480)
-            if let p = game.current { Credit(person: p) }
+            if let p = game.current { Credit(person: p, logo: feedback.map { game.index.logo(for: $0.0) } ?? nil) }
             HStack(spacing: 36) {
                 RoundButton(symbol: "xmark", color: Theme.no) { decide(false) }.accessibilityLabel("Nein, gehört nicht zu \(target.label)")
                 RoundButton(symbol: "checkmark", color: Theme.yes) { decide(true) }.accessibilityLabel("Ja, gehört zu \(target.label)")
             }
             Group {
                 if let (p, ok) = feedback {
+                    PartyLogo(person: p, index: ix, width: 56, height: 34)
                     (Text(ok ? "Richtig: " : "Daneben: ").foregroundColor(ok ? Theme.yes : Theme.no).bold()
                      + Text(p.name).bold() + Text(", \(ix.partyLabel(p)) · \(p.whereLabel)"))
                 } else {
@@ -490,5 +496,32 @@ struct PrimaryButton: View {
                 .background(RoundedRectangle(cornerRadius: 14).fill(secondary ? Theme.card : Theme.ink))
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Kleines Parteilogo, das erst nach dem Tipp erscheint (Design-Variante C).
+struct PartyLogo: View {
+    let person: Person
+    let index: GameIndex
+    var width: CGFloat = 72
+    var height: CGFloat = 44
+
+    var body: some View {
+        if let lg = index.logo(for: person),
+           let url = Bundle.main.url(forResource: "data/" + lg.path, withExtension: nil),
+           let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+           let img = CGImageSourceCreateImageAtIndex(src, 0, nil) {
+            // Das Grünen-Logo hat einen eigenen dunkelgrünen Grund und füllt das Feld
+            let fills = person.party == "GRUENE"
+            Image(decorative: img, scale: 1)
+                .resizable()
+                .aspectRatio(contentMode: fills ? .fill : .fit)
+                .padding(fills ? 0 : 5)
+                .frame(width: width, height: height)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .shadow(color: .black.opacity(0.25), radius: 5, y: 2)
+                .accessibilityLabel("Logo \(index.party(person.party).long)")
+        }
     }
 }

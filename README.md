@@ -24,6 +24,8 @@ Wie viele Gesichter es pro Ebene und Partei gibt und wie vollständig die Parlam
 
 Fotos von Parlaments- oder Parteiwebseiten werden **nicht** verwendet, weil sie urheberrechtlich geschützt sind. Die Recherche zu weiteren Quellen steht in [docs/QUELLEN-RECHERCHE.md](docs/QUELLEN-RECHERCHE.md).
 
+Nach jedem Tipp erscheint klein das Logo der Partei (von Commons; urheberrechtlich gemeinfrei bzw. CC BY/CC BY-SA mit Urhebernennung, aber als Marken geschützt). Auf den Kacheln selbst stehen nur Farbe und Name, damit das Logo nicht beim Raten hilft.
+
 Jedes Foto wird auf das Gesicht zugeschnitten. Der Hintergrund wird mit Apples Vision-Framework freigestellt, stark weichgezeichnet und entsättigt. So verraten Parteilogos, Plakate oder Parteifarben im Hintergrund nichts.
 
 ## Aufbau
@@ -38,6 +40,7 @@ pipeline/             Datenerhebung, in dieser Reihenfolge:
   commons_categories.py 2b zusätzliche Personen aus Commons-Parteikategorien
   merge.py            3  alles zusammenführen, Ebenen festlegen → data/faces.json
   images.py           4  Lizenzangaben und Fotos von Commons laden
+  logos.py            5a Parteilogos von Commons für die Auflösung → app/data/logos/
   build.py            5  Porträts aufbereiten, Bildbögen bauen → app/data/
   report.py           6  Abdeckungsbericht → docs/ABDECKUNG.md
   portrait.swift      Gesicht finden, zuschneiden, Hintergrund weichzeichnen (Vision)
@@ -66,7 +69,8 @@ python3 pipeline/abgeordnetenwatch.py
 python3 pipeline/commons_categories.py
 python3 pipeline/merge.py
 python3 pipeline/images.py      # lädt ~6.800 Fotos, dauert ca. 30 Minuten
-python3 pipeline/build.py
+python3 pipeline/logos.py
+python3 pipeline/build.py       # Porträts aufbereiten: ca. 45 Minuten
 python3 pipeline/report.py
 ```
 

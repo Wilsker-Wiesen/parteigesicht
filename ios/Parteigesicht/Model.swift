@@ -24,7 +24,16 @@ struct GameIndex: Decodable {
     let parties: [Party]
     let levels: [Level]
     let sheets: [Sheet]
+    /// Parteilogos für die Auflösung; Schlüssel: Partei, bei der Union "CDU"/"CSU"
+    let logos: [String: Logo]?
     let people: [Person]
+
+    struct Logo: Decodable { let path: String; let license: String; let artist: String? }
+
+    func logo(for p: Person) -> Logo? {
+        if p.party == "UNION" { return logos?[p.sub == "CSU" ? "CSU" : "CDU"] }
+        return logos?[p.party]
+    }
 }
 
 /// Eine Person; in der JSON-Datei als kompaktes Array gespeichert (siehe "fields").

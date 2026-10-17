@@ -150,6 +150,16 @@ td { font-weight: 600; border-radius: 4px; }
 .insights li { background: var(--card); border-radius: 12px; padding: 11px 13px; line-height: 1.4; }
 .row-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .note { font-size: .75rem; color: var(--muted); line-height: 1.45; }
+/* Zeitlimit pro Gesicht */
+.timer { position: relative; height: 18px; background: var(--card); border-radius: 9px; overflow: hidden; }
+.timer i { display: block; height: 100%; width: 100%; background: var(--ok); transition: width .1s linear; }
+.timer.low i { background: var(--bad); }
+.timer b { position: absolute; right: 9px; top: 0; line-height: 18px; font: 700 .72rem var(--f-display); color: var(--ink); font-variant-numeric: tabular-nums; }
+/* Gemeinsame Runde: Code */
+.code { font: 800 clamp(1.6rem, 9vw, 2.4rem) var(--f-display); letter-spacing: .08em; text-align: center; background: var(--card); border-radius: 14px; padding: 18px 10px; user-select: all; -webkit-user-select: all; }
+.codein { width: 100%; box-sizing: border-box; font: 700 1.4rem var(--f-display); letter-spacing: .1em; text-align: center; text-transform: uppercase; color: var(--ink); background: var(--card); border: 2px solid var(--rule); border-radius: 14px; padding: 14px 10px; }
+.codein:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.err { color: var(--bad); font-weight: 600; font-size: .9rem; min-height: 1.3em; }
 .loading { margin: auto; color: var(--muted); font-family: var(--f-display); font-weight: 600; text-align: center; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -163,7 +173,13 @@ const ROUND_SIZE = 20;
 const LEVEL_WHERE = { bundestag: "Bundestag", europa: "Europaparlament", regierung: "Regierungsamt", weitere: "Parteimitglied" };
 
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+// Zufall: mit Startwert (gemeinsame Runde) zieht jedes Gerät dieselben Gesichter in derselben Reihenfolge
+let rnd = Math.random;
+function seeded(seed) {
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const store = {
   get(k, d) { try { const v = localStorage.getItem("pg-" + k); return v ? JSON.parse(v) : d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem("pg-" + k, JSON.stringify(v)); } catch {} },
@@ -208,7 +224,7 @@ function countFor(partyKey, levels) {
 // Bildbögen gezogen, damit eine Runde nur wenige Dateien laden muss.
 function pick(partyKey, levels, n, exclude) {
   // nach Größe gewichtete Zufallsreihenfolge (Efraimidis-Spirakis), damit Ebenen anteilig vorkommen
-  const pool = IX.sheets.map((s, i) => ({ i, k: Math.pow(Math.random(), 1 / Math.max(1, s.n)), s }))
+  const pool = IX.sheets.map((s, i) => ({ i, k: Math.pow(rnd(), 1 / Math.max(1, s.n)), s }))
     .filter(x => x.s.party === partyKey && levels.includes(x.s.level))
     .sort((a, b) => b.k - a.k);
   const out = [];
@@ -222,8 +238,96 @@ function pick(partyKey, levels, n, exclude) {
   return out;
 }
 
+// ---------- Gemeinsame Runde: Code ----------
+// 50 Bit: Startwert (22) · Parteien (16) · Ebenen (6) · Zeitlimit (3) · Datenstand (3) → 10 Zeichen
+const CODE_ALPHA = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";  // ohne 0/O und 1/I, damit nichts verwechselt wird
+const TIMER_STEPS = [0, 5, 10, 15, 20, 30];
+function dataVersion() {
+  let h = 0; for (const ch of IX.generated + IX.people.length) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h & 7;
+}
+function encodeCode({ seed, parties, levels, timer }) {
+  const pBits = IX.parties.reduce((m, p, i) => parties.includes(p.key) ? m | (1n << BigInt(i)) : m, 0n);
+  const lBits = IX.levels.reduce((m, l, i) => levels.includes(l.key) ? m | (1n << BigInt(i)) : m, 0n);
+  let v = BigInt(seed & 0x3FFFFF);
+  v = (v << 16n) | pBits; v = (v << 6n) | lBits; v = (v << 3n) | BigInt(Math.max(0, TIMER_STEPS.indexOf(timer))); v = (v << 3n) | BigInt(dataVersion());
+  let out = ""; for (let i = 0; i < 10; i++) { out = CODE_ALPHA[Number(v & 31n)] + out; v >>= 5n; }
+  return out;
+}
+function decodeCode(str) {
+  const c = String(str || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (c.length !== 10 || [...c].some(ch => !CODE_ALPHA.includes(ch))) return null;
+  let v = 0n; for (const ch of c) v = (v << 5n) | BigInt(CODE_ALPHA.indexOf(ch));
+  const ver = Number(v & 7n); v >>= 3n; const ti = Number(v & 7n); v >>= 3n;
+  const lBits = v & 63n; v >>= 6n; const pBits = v & 0xFFFFn; v >>= 16n; const seed = Number(v);
+  const parties = IX.parties.filter((p, i) => pBits & (1n << BigInt(i))).map(p => p.key);
+  const levels = IX.levels.filter((l, i) => lBits & (1n << BigInt(i))).map(l => l.key);
+  if (!parties.length || !levels.length || ti >= TIMER_STEPS.length) return null;
+  return { code: c, seed, parties, levels, timer: TIMER_STEPS[ti], sameData: ver === dataVersion() };
+}
+const fmtCode = c => c.slice(0, 5) + "-" + c.slice(5);
+const codeLink = c => location.origin + location.pathname + "#" + c;
+function copyText(text, btn) {
+  const done = () => { const t = btn.textContent; btn.textContent = "Kopiert ✓"; setTimeout(() => btn.textContent = t, 1500); };
+  navigator.clipboard?.writeText(text).then(done).catch(() => {
+    const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); done(); } catch {} ta.remove();
+  });
+}
+function settingsSummary(cfg) {
+  const lv = cfg.levels.length === IX.levels.length ? "alle Ebenen" : cfg.levels.map(k => IX.levels.find(l => l.key === k).label).join(", ");
+  const pt = cfg.parties.map(k => P[k].label).join(", ");
+  return `${pt} · ${lv} · ${cfg.timer ? cfg.timer + " s pro Gesicht" : "ohne Zeitlimit"}`;
+}
+
+// Code erzeugt: anzeigen, kopieren, Runde starten
+function renderCodeShare(cfg) {
+  const code = encodeCode(cfg);
+  app.innerHTML = `
+    <header><button class="iconbtn" id="menu" type="button">Menü</button><span class="wordmark">parteigesicht</span><span class="meta">Gemeinsam</span></header>
+    <h2 style="font:700 1.05rem var(--f-display);margin:6px 0 0">Euer Code</h2>
+    <div class="code" id="codebox">${fmtCode(code)}</div>
+    <p class="note" style="text-align:center">${esc(settingsSummary(cfg))}</p>
+    <div class="row-actions">
+      <button class="next ghost" id="copy" type="button">Code kopieren</button>
+      <button class="next ghost" id="copylink" type="button">${navigator.share ? "Teilen" : "Link kopieren"}</button>
+    </div>
+    <p class="note">Alle Mitspielenden geben den Code unter „Gemeinsam spielen“ ein oder öffnen den Link. Dann bekommt jedes Gerät dieselben ${ROUND_SIZE} Gesichter in derselben Reihenfolge. Am Ende vergleicht ihr eure Ergebnisse.</p>
+    <button class="next" id="start" type="button">Runde starten</button>`;
+  bindHeader();
+  document.getElementById("copy").onclick = e => copyText(fmtCode(code), e.currentTarget);
+  document.getElementById("copylink").onclick = e => {
+    if (navigator.share) navigator.share({ title: "Parteigesicht", text: "Spiel mit: Code " + fmtCode(code), url: codeLink(code) }).catch(() => {});
+    else copyText(codeLink(code), e.currentTarget);
+  };
+  document.getElementById("start").onclick = () => startRound(cfg.parties, cfg.levels, { seed: cfg.seed, timer: cfg.timer, code });
+}
+
+// Code eingeben und beitreten
+function renderJoin(prefill) {
+  app.innerHTML = `
+    <header><button class="iconbtn" id="menu" type="button">Menü</button><span class="wordmark">parteigesicht</span><span class="meta">Gemeinsam</span></header>
+    <h2 style="font:700 1.05rem var(--f-display);margin:6px 0 0">Code eingeben</h2>
+    <input class="codein" id="codein" type="text" inputmode="latin" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="11" placeholder="XXXXX-XXXXX" value="${esc(prefill ? fmtCode(prefill) : "")}">
+    <div class="err" id="err" role="alert"></div>
+    <div id="joined"></div>
+    <button class="next" id="join" type="button">Beitreten</button>`;
+  bindHeader();
+  const input = document.getElementById("codein"), err = document.getElementById("err");
+  const tryJoin = () => {
+    const cfg = decodeCode(input.value);
+    if (!cfg) { err.textContent = "Dieser Code ist ungültig. Er hat 10 Zeichen, ohne 0, O, 1 und I."; return; }
+    err.textContent = "";
+    document.getElementById("joined").innerHTML = `<div class="mode-line"><b>Gemeinsame Runde ${fmtCode(cfg.code)}</b><br>${esc(settingsSummary(cfg))}${cfg.sameData ? "" : "<br><span style=\"color:var(--bad);font-weight:600\">Achtung: Dieses Gerät hat einen anderen Datenstand als das Gerät, das den Code erzeugt hat. Die Gesichter können abweichen. Am besten laden alle die Seite neu.</span>"}</div>`;
+    document.getElementById("join").textContent = "Runde starten";
+    document.getElementById("join").onclick = () => startRound(cfg.parties, cfg.levels, { seed: cfg.seed, timer: cfg.timer, code: cfg.code });
+  };
+  document.getElementById("join").onclick = tryJoin;
+  input.onkeydown = e => { if (e.key === "Enter") tryJoin(); };
+  if (prefill) tryJoin(); else input.focus();
+}
+
 // ---------- Einstellungen ----------
-const settings = store.get("settings", null) || { levels: null, parties: null };
+const settings = store.get("settings", null) || { levels: null, parties: null, timer: 0 };
 function allLevels() { return IX.levels.map(l => l.key); }
 function eligible(levels) { return IX.parties.filter(pt => countFor(pt.key, levels) >= IX.minFaces).map(pt => pt.key); }
 
@@ -252,8 +356,16 @@ function renderMenu() {
       </div>
       <p class="note">Parteien mit weniger als ${IX.minFaces} Gesichtern in der gewählten Ebene sind ausgegraut, damit jede Partei gleich oft vorkommen kann.</p>
     </section>
-    <div class="mode-line">${modeText}</div>
+    <h2 style="font:700 .95rem var(--f-display);margin:4px 0 8px">Zeit pro Gesicht</h2>
+    <div class="chips" id="timers">${TIMER_STEPS.map(t => `<button type="button" class="chip" data-t="${t}" aria-pressed="${(settings.timer || 0) === t}">${t ? t + " s" : "Ohne Limit"}</button>`).join("")}</div>
+    <div class="mode-line">${modeText}${settings.timer ? ` Nach ${settings.timer} Sekunden ohne Antwort zählt das Gesicht als falsch.` : ""}</div>
     <button class="next" id="start" type="button" ${mode === "none" ? "disabled" : ""}>Runde starten</button>
+    <h2 style="font:700 .95rem var(--f-display);margin:10px 0 2px">Gemeinsam spielen</h2>
+    <p class="note" style="margin:0 0 4px">Alle geben denselben Code ein und bekommen dieselben Gesichter in derselben Reihenfolge, auch ohne gemeinsames Netz. Wer den Code erzeugt, legt Parteien, Ebene und Zeitlimit fest.</p>
+    <div class="row-actions">
+      <button class="next ghost" id="mkcode" type="button" ${mode === "none" ? "disabled" : ""}>Code erzeugen</button>
+      <button class="next ghost" id="joincode" type="button">Code eingeben</button>
+    </div>
     <p class="note">Fotos: Wikimedia Commons (freie Lizenzen, Urheber unter jedem Bild). Personen und Ämter: Wikidata und abgeordnetenwatch.de. Stand ${IX.generated}. Hintergründe sind weichgezeichnet, damit Logos und Plakate nichts verraten.</p>`;
 
   document.getElementById("lv-all").onclick = () => { settings.levels = null; store.set("settings", settings); renderMenu(); };
@@ -268,11 +380,16 @@ function renderMenu() {
     if (at >= 0) chosen.splice(at, 1); else chosen.push(k);
     settings.parties = chosen; store.set("settings", settings); renderMenu();
   });
-  document.getElementById("start").onclick = () => startRound(chosen, levels);
+  document.querySelectorAll("#timers [data-t]").forEach(b => b.onclick = () => { settings.timer = +b.dataset.t; store.set("settings", settings); renderMenu(); });
+  document.getElementById("start").onclick = () => startRound(chosen, levels, { timer: settings.timer || 0 });
+  document.getElementById("mkcode").onclick = () => renderCodeShare({ seed: Math.floor(Math.random() * 0x400000), parties: chosen.slice(), levels: levels.slice(), timer: settings.timer || 0 });
+  document.getElementById("joincode").onclick = () => renderJoin("");
 }
 
 // ---------- Runde ----------
-async function startRound(chosen, levels) {
+async function startRound(chosen, levels, opts = {}) {
+  stopTimer();
+  rnd = opts.seed != null ? seeded(opts.seed) : Math.random;
   const used = new Set();
   let items;
   if (chosen.length === 1) {
@@ -290,19 +407,40 @@ async function startRound(chosen, levels) {
     const per = Math.max(2, Math.round(ROUND_SIZE / chosen.length));
     items = shuffle(chosen.flatMap(k => pick(k, levels, per, used))).map(person);
   }
+  rnd = Math.random;
   app.innerHTML = '<div class="loading">Mische Gesichter …</div>';
   await loadSheets(items.slice(0, 4).map(p => p.sheet));
   loadSheets(items.map(p => p.sheet));
-  round = { chosen, levels, items, i: 0, answers: [], single: chosen.length === 1 ? chosen[0] : null };
+  round = { chosen, levels, items, i: 0, answers: [], single: chosen.length === 1 ? chosen[0] : null, timer: opts.timer || 0, code: opts.code || null };
   round.single ? renderSwipe() : renderQuestion();
 }
 
 function headerHtml() {
   const total = round.items.length;
+  round.t0 = performance.now();
   return `<header><button class="iconbtn" id="menu" type="button">Menü</button><span class="wordmark">parteigesicht</span><span class="meta">${Math.min(round.i + 1, total)} / ${total} · ${round.answers.filter(a => a.ok).length} richtig</span></header>
-    <div class="progress"><i style="width:${(round.i / total) * 100}%"></i></div>`;
+    <div class="progress"><i style="width:${(round.i / total) * 100}%"></i></div>
+    ${round.timer ? '<div class="timer" id="timer" aria-live="off"><i></i><b></b></div>' : ""}`;
 }
-function bindHeader() { document.getElementById("menu").onclick = renderMenu; }
+function bindHeader() { document.getElementById("menu").onclick = () => { stopTimer(); renderMenu(); }; }
+
+// Zeitlimit: Balken läuft ab, danach zählt das Gesicht als falsch
+let timerHandle = null;
+function stopTimer() { if (timerHandle) { clearInterval(timerHandle); timerHandle = null; } }
+function startTimer(onExpire) {
+  stopTimer();
+  const secs = round.timer; if (!secs) return;
+  const el = document.getElementById("timer"), bar = el?.querySelector("i"), num = el?.querySelector("b");
+  const t0 = performance.now();
+  const tick = () => {
+    const left = Math.max(0, secs - (performance.now() - t0) / 1000);
+    if (bar) bar.style.width = (left / secs * 100) + "%";
+    if (num) num.textContent = Math.ceil(left) + " s";
+    el?.classList.toggle("low", left <= 3);
+    if (left <= 0) { stopTimer(); onExpire(); }
+  };
+  tick(); timerHandle = setInterval(tick, 100);
+}
 function creditHtml(p) {
   return `Foto: ${esc(p.artist)} · ${esc(p.license)} · <a href="https://commons.wikimedia.org/wiki/File:${encodeURIComponent(p.file)}" target="_blank" rel="noopener">Commons</a> (zugeschnitten, Hintergrund weichgezeichnet)`;
 }
@@ -341,28 +479,33 @@ function renderQuestion() {
     <div class="credit">${creditHtml(p)}</div>`;
   bindHeader();
   document.querySelectorAll("#ballot button").forEach(b => b.onclick = () => answer(b.dataset.p));
+  startTimer(() => answer("_time"));
 }
 
 function answer(guess) {
   const ballot = document.getElementById("ballot");
   if (ballot.classList.contains("done")) return;
+  stopTimer();
   const p = round.items[round.i];
-  const ok = guess === p.party;
-  round.answers.push({ truth: p.party, guess, ok, p });
+  const timedOut = guess === "_time";
+  const ok = !timedOut && guess === p.party;
+  round.answers.push({ truth: p.party, guess, ok, p, ms: performance.now() - round.t0 });
   ballot.classList.add("done");
-  const picked = document.getElementById("b-" + guess);
-  picked.classList.add("picked"); picked.querySelector(".mark").textContent = "✕";
+  if (!timedOut) { const picked = document.getElementById("b-" + guess); picked.classList.add("picked"); picked.querySelector(".mark").textContent = "✕"; }
   const truthBtn = document.getElementById("b-" + p.party);
   truthBtn.classList.add("truth"); truthBtn.querySelector(".mark").textContent = "✓";
   document.querySelector(".meta").textContent = `${round.i + 1} / ${round.items.length} · ${round.answers.filter(a => a.ok).length} richtig`;
   document.getElementById("photo").insertAdjacentHTML("beforeend",
-    `<span class="verdict ${ok ? "ok" : "bad"}">${ok ? "Richtig" : "Daneben"}</span>${revealHtml(p)}`);
+    `<span class="verdict ${ok ? "ok" : "bad"}">${timedOut ? "Zeit um" : ok ? "Richtig" : "Daneben"}</span>${revealHtml(p)}`);
   document.querySelector(".credit").insertAdjacentHTML("beforeend", logoCredit(p));
   const last = round.i === round.items.length - 1;
   document.getElementById("after").innerHTML = `<button class="next" id="next" type="button">${last ? "Auswertung ansehen" : "Nächstes Gesicht"}</button>`;
   const nx = document.getElementById("next");
-  nx.onclick = () => { if (last) renderResult(); else { round.i++; renderQuestion(); } };
+  const go = () => { if (last) renderResult(); else { round.i++; renderQuestion(); } };
+  nx.onclick = go;
   nx.focus({ preventScroll: true });
+  // mit Zeitlimit läuft es von selbst weiter, damit alle im gleichen Takt bleiben
+  if (round.timer) { const h = setTimeout(go, ok ? 1500 : 2200); nx.onclick = () => { clearTimeout(h); go(); }; }
 }
 
 // Eine Partei: Karten wischen (rechts = gehört dazu, links = gehört nicht dazu)
@@ -393,13 +536,15 @@ function renderSwipe() {
   };
   const decide = yes => {
     if (done) return; done = true;
-    const w = window.innerWidth;
-    setPos((yes ? 1 : -1) * w * 1.2, dy + 40, true);
-    const ok = (p.party === round.single) === yes;
-    round.answers.push({ truth: p.party, guess: yes ? round.single : "_no", yes, ok, p });
+    stopTimer();
+    const timedOut = yes === null;
+    if (!timedOut) setPos((yes ? 1 : -1) * window.innerWidth * 1.2, dy + 40, true);
+    else { card.style.transition = "filter .3s"; card.style.filter = "grayscale(1) brightness(.7)"; }
+    const ok = !timedOut && (p.party === round.single) === yes;
+    round.answers.push({ truth: p.party, guess: timedOut ? "_time" : yes ? round.single : "_no", yes, ok, p, ms: performance.now() - round.t0 });
     const fb = document.getElementById("feedback");
     const lg = logoFor(p);
-    fb.innerHTML = `${lg ? `<span class="badge" style="position:static;display:inline-flex;vertical-align:middle;width:56px;height:34px;margin-right:6px;${p.party === "GRUENE" ? "padding:0" : ""}"><img src="data/${lg.path}" alt="Logo ${esc(P[p.party].long)}" style="${p.party === "GRUENE" ? "width:100%;height:100%;object-fit:cover;max-width:none;max-height:none" : ""}"></span>` : ""}<span style="color:${ok ? "var(--ok)" : "var(--bad)"};font-weight:600">${ok ? "Richtig" : "Daneben"}:</span> <b>${esc(p.name)}</b>, ${esc(partyLabel(p))} · ${esc(whereLabel(p))}`;
+    fb.innerHTML = `${lg ? `<span class="badge" style="position:static;display:inline-flex;vertical-align:middle;width:56px;height:34px;margin-right:6px;${p.party === "GRUENE" ? "padding:0" : ""}"><img src="data/${lg.path}" alt="Logo ${esc(P[p.party].long)}" style="${p.party === "GRUENE" ? "width:100%;height:100%;object-fit:cover;max-width:none;max-height:none" : ""}"></span>` : ""}<span style="color:${ok ? "var(--ok)" : "var(--bad)"};font-weight:600">${timedOut ? "Zeit um" : ok ? "Richtig" : "Daneben"}:</span> <b>${esc(p.name)}</b>, ${esc(partyLabel(p))} · ${esc(whereLabel(p))}`;
     document.querySelector(".credit").insertAdjacentHTML("beforeend", logoCredit(p));
     document.querySelector(".meta").textContent = `${round.i + 1} / ${round.items.length} · ${round.answers.filter(a => a.ok).length} richtig`;
     setTimeout(() => {
@@ -417,11 +562,12 @@ function renderSwipe() {
   document.getElementById("btn-yes").onclick = () => decide(true);
   document.getElementById("btn-no").onclick = () => decide(false);
   document.onkeydown = e => { if (!round || !round.single) return; if (e.key === "ArrowRight") decide(true); if (e.key === "ArrowLeft") decide(false); };
+  startTimer(() => decide(null));
 }
 
 // ---------- Auswertung ----------
 function renderResult() {
-  document.onkeydown = null;
+  document.onkeydown = null; stopTimer();
   const A = round.answers, n = A.length, ok = A.filter(a => a.ok).length;
   const tot = store.get("total", { n: 0, ok: 0 }); tot.n += n; tot.ok += ok; store.set("total", tot);
   const wrong = A.filter(a => !a.ok);
@@ -440,12 +586,14 @@ function renderResult() {
     const yesCount = A.filter(a => a.yes).length;
     if (yesCount >= n * 0.7) ins.push(`Du hast ${yesCount}-mal Ja gesagt, obwohl nur die Hälfte dazugehörte.`);
     if (yesCount <= n * 0.3) ins.push(`Du hast nur ${yesCount}-mal Ja gesagt, obwohl die Hälfte dazugehörte.`);
+    const timeouts = A.filter(a => a.guess === "_time").length;
+    if (timeouts) ins.push(`${timeouts}-mal war die Zeit um, bevor du gewischt hast.`);
     body = `<ul class="insights">${ins.map(t => `<li>${t}</li>`).join("")}</ul>`;
   } else {
     const parties = round.chosen.map(k => P[k]);
     chance = n / parties.length;
     const m = {}; parties.forEach(r => { m[r.key] = {}; parties.forEach(c => m[r.key][c.key] = 0); });
-    A.forEach(a => m[a.truth][a.guess]++);
+    A.forEach(a => { if (m[a.truth][a.guess] !== undefined) m[a.truth][a.guess]++; });
     const max = Math.max(1, ...parties.flatMap(r => parties.map(c => m[r.key][c.key])));
     const per = A.filter(a => a.truth === parties[0].key).length;
     const conf = [];
@@ -456,6 +604,8 @@ function renderResult() {
     if (gc[0].v > per + 1) ins.push(`Du hast <b>${gc[0].v}-mal ${esc(gc[0].c.label)}</b> getippt, obwohl nur ${per} Personen dabei waren. Woran hast du das festgemacht?`);
     conf.slice(0, 2).forEach(x => ins.push(`${x.v} ${x.v === 1 ? "Person" : "Personen"} aus der Partei <b>${esc(x.r.label)}</b> hast du für <b>${esc(x.c.label)}</b> gehalten.`));
     if (!ins.length) ins.push("Keine klare Schlagseite in dieser Runde.");
+    const timeouts = A.filter(a => a.guess === "_time").length;
+    if (timeouts) ins.push(`${timeouts}-mal war die Zeit um, bevor du getippt hast.`);
     body = `<ul class="insights">${ins.map(t => `<li>${t}</li>`).join("")}</ul>
       <div class="matrix-wrap"><table>
         <caption class="note" style="caption-side:top;text-align:left;padding-bottom:6px">Zeilen: tatsächliche Partei · Spalten: dein Tipp</caption>
@@ -472,23 +622,29 @@ function renderResult() {
     <header><h1>parteigesicht</h1><span class="meta">Runde beendet</span></header>
     <section class="result"><h2>${ok} von ${n}</h2>
       <p>${verdict} Reiner Zufall läge bei etwa ${Math.round(chance)} von ${n}.</p>
+      ${round.timer ? `<p>Durchschnittlich ${(A.filter(a => a.guess !== "_time").reduce((s, a) => s + (a.ms || 0), 0) / Math.max(1, A.filter(a => a.guess !== "_time").length) / 1000).toFixed(1)} s pro Antwort bei ${round.timer} s Limit.</p>` : ""}
+      ${round.code ? `<p class="lede">Gemeinsame Runde <b style="font-family:var(--f-display);letter-spacing:.06em">${fmtCode(round.code)}</b>: Vergleicht eure Ergebnisse.</p>` : ""}
       <p class="lede">Gesamt bisher auf diesem Gerät: ${tot.ok} von ${tot.n} (${Math.round(tot.ok / tot.n * 100)} %).</p></section>
     ${body}
     ${wrong.length ? `<details><summary class="note" style="cursor:pointer">Falsch eingeordnet (${wrong.length})</summary>
-      <ul class="note" style="padding-left:18px;margin:6px 0 0">${wrong.map(a => `<li>${esc(a.p.name)} (${esc(partyLabel(a.p))}, ${esc(whereLabel(a.p))})</li>`).join("")}</ul></details>` : ""}
+      <ul class="note" style="padding-left:18px;margin:6px 0 0">${wrong.map(a => `<li>${esc(a.p.name)} (${esc(partyLabel(a.p))}, ${esc(whereLabel(a.p))})${a.guess === "_time" ? " – Zeit um" : ""}</li>`).join("")}</ul></details>` : ""}
     <div class="row-actions">
       <button class="next" id="again" type="button">Neue Runde</button>
       <button class="next ghost" id="tomenu" type="button">Menü</button>
     </div>
+    ${round.code ? `<button class="next ghost" id="newcode" type="button">Neuen gemeinsamen Code erzeugen</button>` : ""}
     <p class="note">Pro Runde kommen alle gewählten Parteien gleich oft vor. Die Ebenen werden anteilig gemischt; über das Menü kannst du dich auf eine Ebene beschränken.</p>`;
-  document.getElementById("again").onclick = () => startRound(round.chosen, round.levels);
+  document.getElementById("again").onclick = () => startRound(round.chosen, round.levels, { timer: round.timer });
   document.getElementById("tomenu").onclick = renderMenu;
+  const nc = document.getElementById("newcode");
+  if (nc) nc.onclick = () => renderCodeShare({ seed: Math.floor(Math.random() * 0x400000), parties: round.chosen.slice(), levels: round.levels.slice(), timer: round.timer });
 }
 
 fetch("data/index.json").then(r => r.json()).then(d => {
   IX = d; P = Object.fromEntries(d.parties.map(p => [p.key, p]));
   BY_SHEET = d.sheets.map(() => []);
   d.people.forEach((r, i) => BY_SHEET[r[5]].push(i));
-  renderMenu();
+  const m = /^#([2-9A-Z]{10})$/i.exec(location.hash);
+  if (m) { history.replaceState(null, "", location.pathname); renderJoin(m[1].toUpperCase()); } else renderMenu();
 }).catch(() => { app.innerHTML = '<div class="loading">Die Daten konnten nicht geladen werden. Bitte Seite neu laden.</div>'; });
 </script>

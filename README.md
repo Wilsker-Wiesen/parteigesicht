@@ -11,6 +11,8 @@ Erfasst sind Politikerinnen und Politiker von der Kommune bis zum Europaparlamen
 - **Zuordnen:** Mehrere Parteien sind gewählt. Unter dem Foto stehen farbige Kacheln, eine pro Partei. Jede gewählte Partei kommt in einer Runde gleich oft vor.
 - **Ja/Nein (Wischen):** Genau eine Partei ist gewählt. Nach rechts wischen heißt „gehört dazu“, nach links „gehört nicht dazu“, wie bei Tinder. Die Hälfte der Gesichter gehört zur gewählten Partei, die andere Hälfte zu anderen Parteien.
 - **Ebenen:** Bundestag, Europaparlament, Landtage, Regierungen, Kommunal (Bürgermeister, Landräte, Räte) und weitere Parteimitglieder. Ebenen lassen sich kombinieren.
+- **Zeitlimit:** Optional 5 bis 30 Sekunden pro Gesicht. Läuft die Zeit ab, zählt das Gesicht als falsch, und es geht automatisch weiter.
+- **Gemeinsam spielen:** Ein Gerät erzeugt einen Code (10 Zeichen, z. B. `SPXP2-25ZYH`), die anderen geben ihn ein oder öffnen den Link. Jedes Gerät bekommt dieselben Gesichter in derselben Reihenfolge, auch ohne gemeinsames Netz: Der Code enthält den Zufalls-Startwert, Parteien, Ebenen und Zeitlimit. Am Ende vergleichen alle ihre Ergebnisse. Eine Live-Verbindung zwischen den Geräten gibt es nicht; dafür bräuchte es einen Server.
 - **Parteien:** Union, SPD, Grüne, AfD und Linke sind vorausgewählt. FDP, BSW, Freie Wähler, Piraten und andere lassen sich dazuschalten, sobald es in der gewählten Ebene mindestens 20 Gesichter gibt.
 
 Wie viele Gesichter es pro Ebene und Partei gibt und wie vollständig die Parlamente abgedeckt sind, steht in [docs/ABDECKUNG.md](docs/ABDECKUNG.md).

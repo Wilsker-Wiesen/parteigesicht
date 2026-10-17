@@ -37,9 +37,22 @@ struct MenuView: View {
         let elig = ix.eligible(levels: game.levels)
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Wordmark(index: ix, size: 30)
-                Text("\(ix.people.count) Gesichter · Stand \(ix.generated)")
-                    .font(Theme.body(14, .semibold)).foregroundStyle(Theme.muted)
+                // Kopf: Wortmarke mit Zeile darunter, rechts das App-Symbol in derselben Höhe
+                VStack(alignment: .leading, spacing: 18) {
+                    Wordmark(index: ix, size: 30)
+                    Text("\(ix.people.count) Gesichter · Stand \(ix.generated)")
+                        .font(Theme.body(14, .semibold)).foregroundStyle(Theme.muted)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .overlay(alignment: .trailing) {
+                    GeometryReader { g in
+                        Image("Logo").resizable().interpolation(.high)
+                            .frame(width: g.size.height, height: g.size.height)
+                            .clipShape(RoundedRectangle(cornerRadius: g.size.height * 0.225, style: .continuous))
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+                    .accessibilityHidden(true)
+                }
 
                 Text("Ebene").font(Theme.display(15))
                 FlowLayout(spacing: 8) {

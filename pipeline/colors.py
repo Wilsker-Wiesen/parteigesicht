@@ -2,10 +2,10 @@
 
 Das sind die Farben, mit denen Wahlberichterstattung und Statistikämter Parteien
 kennzeichnen. Sie sind bewusst gut unterscheidbar. Logofarben eignen sich dafür nicht
-immer: Die Linke nutzt im Logo reines Rot (wie die SPD), die FDP seit 2026 Marineblau.
+immer: Die Linke nutzt im Logo reines Rot (wie die SPD).
 
 Mit "colorOverride" in config/parties.json lässt sich eine Farbe festlegen, die Vorrang
-vor Wikidata hat (FDP: neues Logo vom Mai 2026, in Wikidata noch das alte Gelb).
+vor Wikidata hat (FDP: seit Mai 2026 Blau-Gelb, Logo blau; wir nehmen das Gelb von fdp.de).
 
 Für die Union zählt die Farbe der CDU. Ist eine Partei ohne Wikidata-Farbe, bleibt der
 Wert in config/parties.json stehen. Helle Farben bekommen dunkle Schrift (textDark).

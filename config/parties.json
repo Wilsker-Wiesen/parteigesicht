@@ -89,8 +89,8 @@
    "key": "FDP",
    "label": "FDP",
    "long": "FDP",
-   "color": "#032D67",
-   "textDark": false,
+   "color": "#FFE000",
+   "textDark": true,
    "core": false,
    "qids": {
     "Q13124": "FDP"
@@ -99,10 +99,10 @@
     "Members of the FDP"
    ],
    "zu": "zur FDP",
-   "colorSource": "FDP-Logo seit Mai 2026 (Commons: Logo der FDP 2026.svg)",
+   "colorSource": "fdp.de 2026: Blau-Gelb, Gelb als Kampagnenfarbe (Logo selbst blau)",
    "colorOverride": {
-    "color": "#032D67",
-    "source": "FDP-Logo seit Mai 2026 (Commons: Logo der FDP 2026.svg)"
+    "color": "#FFE000",
+    "source": "fdp.de 2026: Blau-Gelb, Gelb als Kampagnenfarbe (Logo selbst blau)"
    }
   },
   {

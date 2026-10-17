@@ -15,7 +15,7 @@ Wie viele Gesichter es pro Ebene und Partei gibt und wie vollständig die Parlam
 
 ## Parteifarben
 
-Alle Farben stammen aus Wikidata (Eigenschaft P465, `pipeline/colors.py`). Das sind die Farben, mit denen Wahlberichte und Statistikämter Parteien kennzeichnen, und sie sind gut voneinander zu unterscheiden. Die Farben der Logos taugen dafür nicht immer: Die Linke nutzt im Logo reines Rot wie die SPD. Ausnahme ist die FDP: Sie hat seit ihrem neuen Logo vom Mai 2026 Marineblau (#032D67), in Wikidata steht noch das alte Gelb. Deshalb ist die Farbe in `config/parties.json` per `colorOverride` festgelegt. BSW (#792351) ist mit dem offiziellen Logo abgeglichen. Für die Union gilt die CDU-Farbe Schwarz. Helle Farben bekommen auf den Kacheln dunkle Schrift.
+Alle Farben stammen aus Wikidata (Eigenschaft P465, `pipeline/colors.py`). Das sind die Farben, mit denen Wahlberichte und Statistikämter Parteien kennzeichnen, und sie sind gut voneinander zu unterscheiden. Die Farben der Logos taugen dafür nicht immer: Die Linke nutzt im Logo reines Rot wie die SPD. Die FDP nutzt seit Mai 2026 wieder Blau und Gelb (Logo blau, Gelb als Kampagnenfarbe). Wir nehmen ihr aktuelles Gelb von fdp.de (#FFE000), festgelegt per `colorOverride` in `config/parties.json`. BSW (#792351) ist mit dem offiziellen Logo abgeglichen. Für die Union gilt die CDU-Farbe Schwarz. Helle Farben bekommen auf den Kacheln dunkle Schrift.
 
 ## App-Symbol
 

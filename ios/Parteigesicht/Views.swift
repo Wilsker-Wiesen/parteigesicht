@@ -12,6 +12,8 @@ struct RootView: View {
                 case .playing:
                     if game.targetParty != nil { SwipeView() } else { ChoiceView() }
                 case .result: ResultView()
+                case .share(let cfg): CodeShareView(config: cfg)
+                case .join(let prefill): JoinView(prefill: prefill ?? "")
                 }
             }
             .frame(maxWidth: 560)
@@ -68,11 +70,20 @@ struct MenuView: View {
                 Text("Parteien mit weniger als \(ix.minFaces) Gesichtern in der gewählten Ebene sind ausgegraut, damit jede Partei gleich oft vorkommt.")
                     .font(.footnote).foregroundStyle(.secondary)
 
+                Text("Zeit pro Gesicht").font(Theme.display(15))
+                FlowLayout(spacing: 8) {
+                    ForEach(SharedCode.timerSteps, id: \.self) { t in
+                        Chip(label: t == 0 ? "Ohne Limit" : "\(t) s", detail: nil, color: nil, on: game.timer == t, enabled: true) { game.setTimer(t) }
+                    }
+                }
+
                 Group {
-                    if let t = game.targetParty {
-                        Text("**Ja/Nein-Modus:** Gehört die Person **\(ix.party(t).zu ?? "zu " + ix.party(t).label)**? Nach rechts wischen = Ja, nach links = Nein.")
+                    let fast = game.timer > 0 ? "unter \(Int((Double(game.timer) * 0.4).rounded())) s" : "unter 3 s"
+                    let timerNote = game.timer > 0 ? " Nach \(game.timer) Sekunden ohne Antwort zählt das Gesicht als falsch." : ""
+                    if let t = game.menuTarget {
+                        Text("**Ja/Nein-Modus:** Gehört die Person **\(ix.party(t).zu ?? "zu " + ix.party(t).label)**? Nach rechts wischen = Ja, nach links = Nein.\(timerNote) Schnelle richtige Antworten (\(fast)) bringen je einen Bonuspunkt.")
                     } else if game.chosen.count >= 2 {
-                        Text("**Zuordnen:** \(game.chosen.count) Parteien, je \(max(2, Int((Double(Game.roundSize) / Double(game.chosen.count)).rounded()))) Gesichter pro Runde.")
+                        Text("**Zuordnen:** \(game.chosen.count) Parteien, je \(max(2, Int((Double(Game.roundSize) / Double(game.chosen.count)).rounded()))) Gesichter pro Runde.\(timerNote) Schnelle richtige Antworten (\(fast)) bringen je einen Bonuspunkt.")
                     } else {
                         Text("Wähle mindestens eine Partei.")
                     }
@@ -83,6 +94,16 @@ struct MenuView: View {
                 PrimaryButton(title: "Runde starten") { game.start() }
                     .disabled(game.chosen.isEmpty)
                     .opacity(game.chosen.isEmpty ? 0.35 : 1)
+
+                Text("Gemeinsam spielen").font(Theme.display(15))
+                Text("Alle geben denselben Code ein und bekommen dieselben Gesichter in derselben Reihenfolge, auch ohne gemeinsames Netz. Wer den Code erzeugt, legt Parteien, Ebene und Zeitlimit fest.")
+                    .font(Theme.body(14)).foregroundStyle(Theme.muted)
+                HStack(spacing: 10) {
+                    PrimaryButton(title: "Code erzeugen", secondary: true) { game.makeCode() }
+                        .disabled(game.chosen.isEmpty)
+                        .opacity(game.chosen.isEmpty ? 0.35 : 1)
+                    PrimaryButton(title: "Code eingeben", secondary: true) { game.joinCode() }
+                }
 
                 Text("Fotos: Wikimedia Commons (freie Lizenzen, Urheber unter jedem Bild). Personen und Ämter: Wikidata und abgeordnetenwatch.de. Hintergründe sind weichgezeichnet.")
                     .font(Theme.body(12)).foregroundStyle(Theme.muted)
@@ -163,7 +184,34 @@ struct RoundHeader: View {
                     .font(Theme.body(13, .bold)).foregroundStyle(Theme.muted).monospacedDigit()
             }
             ProgressView(value: Double(game.position), total: Double(max(1, game.items.count))).tint(Theme.ink)
+            if game.round.timer > 0 { TimerBar() }
         }
+    }
+}
+
+/// Zeitlimit: Balken läuft ab, in den letzten drei Sekunden rot, Restsekunden rechts.
+struct TimerBar: View {
+    @EnvironmentObject var game: Game
+    var body: some View {
+        let total = Double(max(1, game.round.timer))
+        let left = game.currentAnswer == nil ? game.timeLeft : 0
+        let low = left <= 3
+        HStack(spacing: 8) {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Theme.rule)
+                    Capsule().fill(low ? Theme.no : Theme.yes)
+                        .frame(width: max(0, geo.size.width * left / total))
+                        .animation(.linear(duration: 0.1), value: left)
+                }
+            }
+            .frame(height: 8)
+            Text("\(Int(left.rounded(.up))) s")
+                .font(Theme.body(13, .bold)).foregroundStyle(low ? Theme.no : Theme.muted).monospacedDigit()
+                .frame(width: 34, alignment: .trailing)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Noch \(Int(left.rounded(.up))) Sekunden")
     }
 }
 
@@ -184,10 +232,11 @@ struct Credit: View {
 struct RevealOverlay: View {
     @EnvironmentObject var game: Game
     let person: Person
-    let correct: Bool
+    let answer: Game.Answer
     var body: some View {
+        let correct = answer.correct
         VStack(alignment: .leading, spacing: 3) {
-            Text(correct ? "Richtig" : "Daneben")
+            Text(game.verdictText(answer))
                 .font(Theme.display(11)).foregroundStyle(.white)
                 .padding(.horizontal, 8).padding(.vertical, 3)
                 .background(Capsule().fill(correct ? Theme.yes : Theme.no))
@@ -212,60 +261,61 @@ struct RevealOverlay: View {
 struct ChoiceView: View {
     @EnvironmentObject var game: Game
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @State private var answered: String?
 
     var body: some View {
         let ix = game.index
         if let p = game.current {
+            let a = game.currentAnswer
+            let done = a != nil
+            let answered = a?.guess
             VStack(spacing: 12) {
                 RoundHeader()
                 FaceView(person: p, index: ix)
-                    .overlay { if answered != nil { RevealOverlay(person: p, correct: answered == p.party) } }
+                    .overlay { if let a { RevealOverlay(person: p, answer: a) } }
                     .clipShape(RoundedRectangle(cornerRadius: 18))
                     .frame(maxHeight: 440)
                 Text("Zu welcher Partei gehört diese Person?").font(Theme.display(15, .semibold)).multilineTextAlignment(.center)
                 // Telefon: höchstens drei Kacheln pro Zeile, damit alle sichtbar bleiben; iPad: alle in einer Zeile
-                let n = game.chosen.count
+                let n = game.round.parties.count
                 let cols = sizeClass == .regular ? min(n, 6) : (n <= 3 ? n : (n == 4 ? 2 : 3))
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: max(1, cols)), spacing: 8) {
-                    ForEach(game.chosen, id: \.self) { key in
+                    ForEach(game.round.parties, id: \.self) { key in
                         let pt = ix.party(key)
                         Button {
-                            guard answered == nil else { return }
-                            answered = key
+                            guard !done else { return }
                             game.answer(party: key)
                             Haptics.tap(key == p.party)
                         } label: {
                             HStack(spacing: 4) {
                                 Text(pt.label).font(Theme.display(14)).lineLimit(2).minimumScaleFactor(0.6)
-                                if answered != nil && key == p.party { Text("✓").font(Theme.display(14)) }
+                                if done && key == p.party { Text("✓").font(Theme.display(14)) }
                                 else if answered == key { Text("✕").font(Theme.display(14)) }
                             }
                             .frame(maxWidth: .infinity, minHeight: 58)
                             .foregroundStyle(pt.textDark == true ? Color.black : .white)
                             .background(RoundedRectangle(cornerRadius: 14).fill(Color(hex: pt.color)))
-                            .overlay(RoundedRectangle(cornerRadius: 17).stroke(borderColor(key, p), lineWidth: 3).padding(-5))
-                            .opacity(answered == nil || key == answered || key == p.party ? 1 : 0.3)
+                            .overlay(RoundedRectangle(cornerRadius: 17).stroke(borderColor(key, p, answered, done), lineWidth: 3).padding(-5))
+                            .opacity(!done || key == answered || key == p.party ? 1 : 0.3)
                         }
                         .buttonStyle(.plain)
                     }
                 }
                 // Platz für den Knopf immer freihalten, damit das Foto nach dem Tipp nicht springt
                 PrimaryButton(title: game.position + 1 >= game.items.count ? "Auswertung ansehen" : "Nächstes Gesicht") {
-                    answered = nil; game.advance()
+                    game.advance()
                 }
-                .opacity(answered == nil ? 0 : 1)
-                .disabled(answered == nil)
-                .accessibilityHidden(answered == nil)
-                Credit(person: p, logo: answered != nil ? ix.logo(for: p) : nil)
+                .opacity(done ? 1 : 0)
+                .disabled(!done)
+                .accessibilityHidden(!done)
+                Credit(person: p, logo: done ? ix.logo(for: p) : nil)
                 Spacer(minLength: 0)
             }
             .padding()
         }
     }
 
-    private func borderColor(_ key: String, _ p: Person) -> Color {
-        guard answered != nil else { return .clear }
+    private func borderColor(_ key: String, _ p: Person, _ answered: String?, _ done: Bool) -> Color {
+        guard done else { return .clear }
         if key == p.party { return Theme.yes }
         if key == answered { return Theme.no }
         return .clear
@@ -277,12 +327,12 @@ struct ChoiceView: View {
 struct SwipeView: View {
     @EnvironmentObject var game: Game
     @State private var offset: CGSize = .zero
-    @State private var feedback: (Person, Bool)?
-    @State private var locked = false
 
     var body: some View {
         let ix = game.index
         let target = ix.party(game.targetParty ?? "")
+        let feedback = game.currentAnswer
+        let locked = feedback != nil
         VStack(spacing: 14) {
             RoundHeader()
             (Text("Gehört diese Person ") + Text(target.zu ?? "zu \(target.label)").foregroundColor(target.key == "UNION" || target.textDark == true ? Theme.ink : Color(hex: target.color)) + Text("?"))
@@ -298,6 +348,10 @@ struct SwipeView: View {
                         .overlay(alignment: .topLeading) { Stamp(text: "JA", color: Theme.yes, angle: -14).opacity(Double(offset.width / 90)).padding(20) }
                         .overlay(alignment: .topTrailing) { Stamp(text: "NEIN", color: Theme.no, angle: 14).opacity(Double(-offset.width / 90)).padding(20) }
                         .clipShape(RoundedRectangle(cornerRadius: 22))
+                        // Zeit um: Karte bleibt liegen und wird grau
+                        .grayscale(feedback?.timedOut == true ? 1 : 0)
+                        .brightness(feedback?.timedOut == true ? -0.3 : 0)
+                        .animation(.easeOut(duration: 0.3), value: feedback?.timedOut == true)
                         .shadow(color: .black.opacity(0.22), radius: 14, y: 8)
                         .offset(x: offset.width, y: offset.height * 0.4)
                         .rotationEffect(.degrees(Double(offset.width / 18)))
@@ -319,15 +373,16 @@ struct SwipeView: View {
                 }
             }
             .frame(maxHeight: 480)
-            if let p = game.current { Credit(person: p, logo: feedback.map { game.index.logo(for: $0.0) } ?? nil) }
+            if let p = game.current { Credit(person: p, logo: feedback.map { game.index.logo(for: $0.person) } ?? nil) }
             HStack(spacing: 36) {
                 RoundButton(symbol: "xmark", color: Theme.no) { decide(false) }.accessibilityLabel("Nein, gehört nicht zu \(target.label)")
                 RoundButton(symbol: "checkmark", color: Theme.yes) { decide(true) }.accessibilityLabel("Ja, gehört zu \(target.label)")
             }
             Group {
-                if let (p, ok) = feedback {
+                if let a = feedback {
+                    let p = a.person
                     PartyLogo(person: p, index: ix, width: 56, height: 34)
-                    (Text(ok ? "Richtig: " : "Daneben: ").foregroundColor(ok ? Theme.yes : Theme.no).bold()
+                    (Text(game.verdictText(a) + ": ").foregroundColor(a.correct ? Theme.yes : Theme.no).bold()
                      + Text(p.name).bold() + Text(", \(ix.partyLabel(p)) · \(p.whereLabel)"))
                 } else {
                     Text("Nach rechts wischen = Ja · nach links = Nein").foregroundStyle(Theme.muted)
@@ -337,22 +392,15 @@ struct SwipeView: View {
             Spacer(minLength: 0)
         }
         .padding()
+        .onChange(of: game.position) { _, _ in offset = .zero }
     }
 
     private func decide(_ yes: Bool) {
-        guard !locked, let p = game.current else { return }
-        locked = true
+        guard game.currentAnswer == nil, let p = game.current else { return }
         let ok = (p.party == game.targetParty) == yes
         game.answer(yes: yes)
         Haptics.tap(ok)
-        feedback = (p, ok)
         withAnimation(.easeOut(duration: 0.28)) { offset = CGSize(width: yes ? 700 : -700, height: offset.height + 60) }
-        DispatchQueue.main.asyncAfter(deadline: .now() + (ok ? 0.9 : 1.6)) {
-            offset = .zero
-            feedback = nil
-            locked = false
-            game.advance()
-        }
     }
 }
 
@@ -386,12 +434,28 @@ struct ResultView: View {
     var body: some View {
         let ix = game.index
         let a = game.answers
-        let n = a.count, ok = game.correctCount
-        let chance = game.targetParty != nil ? Double(n) / 2 : Double(n) / Double(max(1, game.chosen.count))
+        let n = a.count, ok = game.correctCount, bonus = game.bonus
+        let chance = game.targetParty != nil ? Double(n) / 2 : Double(n) / Double(max(1, game.round.parties.count))
+        let share = Double(ok) / Double(max(1, n))
+        let verdict = share >= 0.8 ? "Du kennst dich aus." : Double(ok) > chance * 1.5 ? "Besser als Zufall, aber oft daneben." : Double(ok) >= chance * 0.8 ? "Ungefähr so gut wie Raten." : "Deine Eindrücke lagen meist falsch."
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("\(ok) von \(n)").font(Theme.display(44, .heavy)).kerning(-1.5)
-                Text("Reiner Zufall läge bei etwa \(Int(chance.rounded())) von \(n).")
+                Text("\(game.points) Punkte").font(Theme.display(44, .heavy)).kerning(-1.5)
+                (Text("\(ok) von \(n)").bold() + Text(" richtig")
+                 + (bonus > 0 ? Text(" + ") + Text("\(bonus)").bold() + Text(" Schnell-Bonus") : Text(""))
+                 + Text(" · Gesamtzeit ") + Text(Game.formatTime(game.totalMs)).bold())
+                Text("\(verdict) Reiner Zufall läge bei etwa \(Int(chance.rounded())) von \(n).")
+                if game.round.timer > 0 {
+                    let answered = a.filter { !$0.timedOut }
+                    let avg = answered.reduce(0) { $0 + $1.ms } / Double(max(1, answered.count)) / 1000
+                    Text("Durchschnittlich \(String(format: "%.1f", avg)) s pro Antwort bei \(game.round.timer) s Limit.")
+                }
+                if let code = game.round.code {
+                    (Text("Gemeinsame Runde ") + Text(SharedCode.format(code)).font(Theme.display(15)).kerning(1)
+                     + Text(": Die meisten Punkte gewinnen, bei Gleichstand die kürzere Gesamtzeit."))
+                        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.card))
+                }
                 Text("Gesamt bisher: \(game.totalCorrect) von \(game.totalAnswered)").foregroundStyle(Theme.muted)
                 ForEach(insights(), id: \.self) { t in
                     Text(t).padding(12).frame(maxWidth: .infinity, alignment: .leading)
@@ -403,15 +467,20 @@ struct ResultView: View {
                     DisclosureGroup("Falsch eingeordnet (\(wrong.count))") {
                         VStack(alignment: .leading, spacing: 4) {
                             ForEach(wrong, id: \.person.id) { w in
-                                Text("\(w.person.name) (\(ix.partyLabel(w.person)), \(w.person.whereLabel))").font(.footnote)
+                                Text("\(w.person.name) (\(ix.partyLabel(w.person)), \(w.person.whereLabel))\(w.timedOut ? " – Zeit um" : "")").font(.footnote)
                             }
                         }
                     }
                 }
                 HStack {
-                    PrimaryButton(title: "Neue Runde") { game.start() }
+                    PrimaryButton(title: "Neue Runde") { var cfg = game.round; cfg.seed = nil; cfg.code = nil; game.start(cfg) }
                     PrimaryButton(title: "Menü", secondary: true) { game.backToMenu() }
                 }
+                if game.round.code != nil {
+                    PrimaryButton(title: "Neuen gemeinsamen Code erzeugen", secondary: true) { game.makeCodeFromRound() }
+                }
+                Text("Schnell-Bonus: ein Punkt je richtige Antwort \(game.round.timer > 0 ? "unter \(Int((Double(game.round.timer) * 0.4).rounded())) s" : "unter 3 s"). Pro Runde kommen alle gewählten Parteien gleich oft vor.")
+                    .font(Theme.body(12)).foregroundStyle(Theme.muted)
             }
             .padding()
         }
@@ -432,25 +501,30 @@ struct ResultView: View {
                 let by = Dictionary(grouping: fa, by: { $0.person.party }).map { "\($0.value.count)× \(ix.party($0.key).label)" }
                 out.append("\(fa.count) von \(others.count) Personen aus anderen Parteien hast du für \(label) gehalten: \(by.joined(separator: ", ")).")
             }
+            if game.timeouts > 0 { out.append("\(game.timeouts)-mal war die Zeit um, bevor du gewischt hast.") }
             return out
         }
         var out: [String] = []
-        let per = a.filter { $0.person.party == game.chosen.first }.count
-        let guesses = Dictionary(grouping: a, by: { $0.guess ?? "" }).mapValues(\.count)
+        let per = a.filter { $0.person.party == game.round.parties.first }.count
+        // „Zeit um“ hat keinen Tipp und zählt hier nicht mit
+        let typed = a.filter { !$0.timedOut && $0.guess != nil }
+        let guesses = Dictionary(grouping: typed, by: { $0.guess ?? "" }).mapValues(\.count)
         if let top = guesses.max(by: { $0.value < $1.value }), top.value > per + 1 {
             out.append("Du hast \(top.value)-mal \(ix.party(top.key).label) getippt, obwohl nur \(per) Personen dabei waren.")
         }
-        let conf = Dictionary(grouping: a.filter { !$0.correct }, by: { "\($0.person.party)>\($0.guess ?? "")" })
+        let conf = Dictionary(grouping: typed.filter { !$0.correct }, by: { "\($0.person.party)>\($0.guess ?? "")" })
             .sorted { $0.value.count > $1.value.count }.prefix(2)
         for (k, v) in conf {
             let parts = k.split(separator: ">").map(String.init)
             out.append("\(v.count) aus der Partei \(ix.party(parts[0]).label) hast du für \(ix.party(parts[1]).label) gehalten.")
         }
-        return out.isEmpty ? ["Keine klare Schlagseite in dieser Runde."] : out
+        if out.isEmpty { out.append("Keine klare Schlagseite in dieser Runde.") }
+        if game.timeouts > 0 { out.append("\(game.timeouts)-mal war die Zeit um, bevor du getippt hast.") }
+        return out
     }
 
     private var matrix: some View {
-        let ix = game.index, keys = game.chosen
+        let ix = game.index, keys = game.round.parties
         let cnt = Dictionary(grouping: game.answers, by: { "\($0.person.party)>\($0.guess ?? "")" }).mapValues(\.count)
         return VStack(alignment: .leading, spacing: 4) {
             Text("Zeilen: tatsächliche Partei · Spalten: dein Tipp").font(.caption).foregroundStyle(.secondary)
@@ -475,6 +549,137 @@ struct ResultView: View {
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 12).fill(Theme.card))
+    }
+}
+
+// MARK: - Gemeinsam spielen
+
+struct CodeShareView: View {
+    @EnvironmentObject var game: Game
+    let config: RoundConfig
+    @State private var copied = false
+
+    var body: some View {
+        let code = config.code ?? ""
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                SmallHeader(meta: "Gemeinsam")
+                Text("Euer Code").font(Theme.display(17))
+                Text(SharedCode.format(code))
+                    .font(Theme.display(32, .heavy)).kerning(2).monospacedDigit()
+                    .frame(maxWidth: .infinity).padding(.vertical, 18)
+                    .background(RoundedRectangle(cornerRadius: 16).fill(Theme.card))
+                    .textSelection(.enabled)
+                    .accessibilityLabel("Code " + code.map(String.init).joined(separator: " "))
+                Text(game.settingsSummary(config)).font(Theme.body(14)).foregroundStyle(Theme.muted)
+                    .frame(maxWidth: .infinity).multilineTextAlignment(.center)
+                HStack(spacing: 10) {
+                    PrimaryButton(title: copied ? "Kopiert ✓" : "Code kopieren", secondary: true) {
+                        UIPasteboard.general.string = SharedCode.format(code)
+                        copied = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copied = false }
+                    }
+                    ShareLink(item: SharedCode.link(code), subject: Text("Parteigesicht"), message: Text("Spiel mit: Code " + SharedCode.format(code))) {
+                        Text("Teilen").font(Theme.display(15))
+                            .frame(maxWidth: .infinity, minHeight: 50)
+                            .foregroundStyle(Theme.ink)
+                            .background(RoundedRectangle(cornerRadius: 14).fill(Theme.card))
+                    }
+                    .buttonStyle(.plain)
+                }
+                Text("Alle Mitspielenden geben den Code unter „Gemeinsam spielen“ ein oder öffnen den Link. Dann bekommt jedes Gerät dieselben \(Game.roundSize) Gesichter in derselben Reihenfolge. Am Ende vergleicht ihr eure Ergebnisse.")
+                    .font(Theme.body(14)).foregroundStyle(Theme.muted)
+                PrimaryButton(title: "Runde starten") { game.start(config) }
+            }
+            .padding()
+        }
+        .toolbar(.hidden)
+    }
+}
+
+struct JoinView: View {
+    @EnvironmentObject var game: Game
+    let prefill: String
+    @State private var input = ""
+    @State private var error: String?
+    @State private var decoded: SharedCode.Decoded?
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                SmallHeader(meta: "Gemeinsam")
+                Text("Code eingeben").font(Theme.display(17))
+                TextField("XXXXX-XXXXX", text: $input)
+                    .font(Theme.display(26, .heavy)).kerning(2)
+                    .multilineTextAlignment(.center)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .keyboardType(.asciiCapable)
+                    .submitLabel(.go)
+                    .focused($focused)
+                    .onSubmit(tryJoin)
+                    .onChange(of: input) { _, _ in decoded = nil; error = nil }
+                    .padding(.vertical, 14).padding(.horizontal, 12)
+                    .background(RoundedRectangle(cornerRadius: 16).fill(Theme.card))
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(error == nil ? Theme.rule : Theme.no, lineWidth: 1.5))
+                    .accessibilityLabel("Code")
+                if let error {
+                    Text(error).font(Theme.body(14, .semibold)).foregroundStyle(Theme.no)
+                }
+                if let d = decoded {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Gemeinsame Runde \(SharedCode.format(d.config.code ?? ""))").bold()
+                        Text(game.settingsSummary(d.config))
+                        if !d.sameData {
+                            Text("Achtung: Dieses Gerät hat einen anderen Datenstand als das Gerät, das den Code erzeugt hat. Die Gesichter können abweichen. Am besten aktualisieren alle die App.")
+                                .foregroundStyle(Theme.no).fontWeight(.semibold)
+                        }
+                    }
+                    .font(Theme.body(15))
+                    .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Theme.card))
+                    PrimaryButton(title: "Runde starten") { game.start(d.config) }
+                } else {
+                    PrimaryButton(title: "Beitreten", action: tryJoin)
+                }
+            }
+            .padding()
+        }
+        .toolbar(.hidden)
+        .onAppear {
+            if !prefill.isEmpty { input = SharedCode.format(prefill); tryJoin() } else { focused = true }
+        }
+    }
+
+    private func tryJoin() {
+        guard let d = SharedCode.decode(input, index: game.index) else {
+            decoded = nil
+            error = "Dieser Code ist ungültig. Er hat 10 Zeichen, ohne 0, O, 1 und I."
+            return
+        }
+        error = nil
+        decoded = d
+        focused = false
+    }
+}
+
+/// Kopfzeile der Nebenansichten: Menü-Knopf, Schriftzug, Hinweis rechts
+struct SmallHeader: View {
+    @EnvironmentObject var game: Game
+    let meta: String
+    var body: some View {
+        HStack {
+            Button { game.backToMenu() } label: {
+                Text("Menü").font(Theme.body(14, .bold)).padding(.horizontal, 13).padding(.vertical, 7)
+                    .background(Capsule().fill(Theme.card))
+            }
+            .buttonStyle(.plain)
+            Spacer()
+            Text("parteigesicht").font(Theme.display(15, .heavy)).kerning(-0.5)
+            Spacer()
+            Text(meta).font(Theme.body(13, .bold)).foregroundStyle(Theme.muted)
+        }
     }
 }
 

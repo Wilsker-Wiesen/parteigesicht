@@ -312,7 +312,7 @@ function settingsSummary(cfg) {
 // Lokal gegen `wrangler dev`, online gegen den veröffentlichten Worker. Ohne Server bleibt
 // der Code-Modus wie bisher: gleiche Runde, aber jedes Gerät spielt für sich.
 const LIVE_SERVER = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? "ws://127.0.0.1:8787"
-  : location.hostname.endsWith("github.io") ? "wss://parteigesicht.SUBDOMAIN.workers.dev" : null;
+  : location.hostname.endsWith("github.io") ? "wss://parteigesicht.wilsker-wiesen.workers.dev" : null;
 const liveAvailable = () => !!LIVE_SERVER && !LIVE_SERVER.includes("SUBDOMAIN") && "WebSocket" in window;
 let screen = "menu", live = null, countdownHandle = null;
 function myId() {

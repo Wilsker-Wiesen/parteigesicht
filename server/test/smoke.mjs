@@ -4,7 +4,7 @@ import WebSocket from "ws";
 const SERVER = process.env.SERVER || "ws://127.0.0.1:8787";
 const ALPHA = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 const CODE = Array.from({ length: 10 }, () => ALPHA[Math.floor(Math.random() * ALPHA.length)]).join(""); // frischer Raum je Lauf
-const ORIGIN = "http://localhost:8766";
+const ORIGIN = process.env.ORIGIN || "http://localhost:8766";
 const open = (id, name) => new Promise((res, rej) => {
   const ws = new WebSocket(`${SERVER}/room/${CODE}`, { headers: { Origin: ORIGIN } });
   ws.last = null;
@@ -36,3 +36,4 @@ check(a.last.players.find(p => p.name === "Ben")?.online === false, "Ben als off
 const bad = new WebSocket(`${SERVER}/room/${CODE}`, { headers: { Origin: "https://example.com" } });
 await new Promise(r => { bad.on("error", r); bad.on("unexpected-response", (req, res) => { check(res.statusCode === 403, "fremde Webseite wird abgewiesen"); r(); }); });
 a.close();
+setTimeout(() => process.exit(), 300);

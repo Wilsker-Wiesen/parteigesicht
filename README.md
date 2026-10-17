@@ -111,7 +111,7 @@ npx wrangler login      # einmalig, mit dem eigenen Cloudflare-Konto
 npx wrangler deploy     # veröffentlichen
 ```
 
-Die Adresse des veröffentlichten Workers steht in `app/index.html` (`LIVE_SERVER`). Erlaubte Webseiten: `ALLOWED_ORIGINS` in `server/wrangler.toml`.
+Veröffentlicht unter `wss://parteigesicht.wilsker-wiesen.workers.dev` (eingetragen in `app/index.html`, `LIVE_SERVER`). Test gegen den Online-Server: `SERVER=wss://parteigesicht.wilsker-wiesen.workers.dev ORIGIN=https://wilsker-wiesen.github.io npm test`. Erlaubte Webseiten: `ALLOWED_ORIGINS` in `server/wrangler.toml`.
 
 ## Web-App lokal starten
 

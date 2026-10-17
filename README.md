@@ -4,6 +4,8 @@ Ein Ratespiel für iPhone, iPad und Browser: Du siehst das Gesicht einer Politik
 
 Erfasst sind Politikerinnen und Politiker von der Kommune bis zum Europaparlament.
 
+**Spielen:** https://wilsker-wiesen.github.io/parteigesicht/ (im Browser; auf dem iPhone über „Teilen → Zum Home-Bildschirm“ wie eine App)
+
 ## Spielmodi
 
 - **Zuordnen:** Mehrere Parteien sind gewählt. Unter dem Foto stehen farbige Kacheln, eine pro Partei. Jede gewählte Partei kommt in einer Runde gleich oft vor.
@@ -85,6 +87,14 @@ python3 pipeline/report.py
 ```
 
 Abfragen und Downloads landen in `data/cache/` (nicht im Repository). Ein zweiter Lauf lädt nur, was fehlt.
+
+## Web-App veröffentlichen
+
+```bash
+sh pipeline/publish_pages.sh
+```
+
+Legt die Seite in den Zweig `gh-pages`; GitHub Pages liefert sie unter https://wilsker-wiesen.github.io/parteigesicht/ aus.
 
 ## Web-App lokal starten
 

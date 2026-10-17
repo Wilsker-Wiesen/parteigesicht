@@ -89,8 +89,8 @@
    "key": "FDP",
    "label": "FDP",
    "long": "FDP",
-   "color": "#FFED00",
-   "textDark": true,
+   "color": "#032D67",
+   "textDark": false,
    "core": false,
    "qids": {
     "Q13124": "FDP"
@@ -99,7 +99,11 @@
     "Members of the FDP"
    ],
    "zu": "zur FDP",
-   "colorSource": "Wikidata P465"
+   "colorSource": "FDP-Logo seit Mai 2026 (Commons: Logo der FDP 2026.svg)",
+   "colorOverride": {
+    "color": "#032D67",
+    "source": "FDP-Logo seit Mai 2026 (Commons: Logo der FDP 2026.svg)"
+   }
   },
   {
    "key": "BSW",

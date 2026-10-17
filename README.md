@@ -15,11 +15,11 @@ Wie viele Gesichter es pro Ebene und Partei gibt und wie vollständig die Parlam
 
 ## Parteifarben
 
-Alle Farben stammen aus Wikidata (Eigenschaft P465, `pipeline/colors.py`). Das sind die Farben, mit denen Wahlberichte und Statistikämter Parteien kennzeichnen, und sie sind gut voneinander zu unterscheiden. Die Farben der Logos taugen dafür nicht immer: Die Linke nutzt im Logo reines Rot wie die SPD, die FDP seit 2026 Marineblau ähnlich der AfD. BSW (#792351) ist mit dem offiziellen Logo abgeglichen. Für die Union gilt die CDU-Farbe Schwarz. Helle Farben bekommen auf den Kacheln dunkle Schrift.
+Alle Farben stammen aus Wikidata (Eigenschaft P465, `pipeline/colors.py`). Das sind die Farben, mit denen Wahlberichte und Statistikämter Parteien kennzeichnen, und sie sind gut voneinander zu unterscheiden. Die Farben der Logos taugen dafür nicht immer: Die Linke nutzt im Logo reines Rot wie die SPD. Ausnahme ist die FDP: Sie hat seit ihrem neuen Logo vom Mai 2026 Marineblau (#032D67), in Wikidata steht noch das alte Gelb. Deshalb ist die Farbe in `config/parties.json` per `colorOverride` festgelegt. BSW (#792351) ist mit dem offiziellen Logo abgeglichen. Für die Union gilt die CDU-Farbe Schwarz. Helle Farben bekommen auf den Kacheln dunkle Schrift.
 
 ## App-Symbol
 
-„Spektrum-Kopf“: Kopf und Schultern aus sieben gleich breiten Streifen, von links nach rechts Linke, Grüne, SPD, FDP, Union, BSW, AfD. Grün ist noch im Kopf zu sehen, das AfD-Blau ganz rechts liegt nur in den Schultern, die Linke ganz links ebenfalls. Erzeugt mit `pipeline/appicon.swift`, Vorlage in `docs/brand/app-symbol-1024.png`.
+„Spektrum-Kopf“: Kopf und Schultern aus sieben gleich breiten Streifen, von links nach rechts Linke, Grüne, SPD, FDP, Union, BSW, AfD, jeweils in der offiziellen Parteifarbe. Grün ist noch im Kopf zu sehen, das AfD-Blau ganz rechts liegt nur in den Schultern, die Linke ganz links ebenfalls. Erzeugt mit `pipeline/appicon.swift`, Vorlage in `docs/brand/app-symbol-1024.png`.
 
 ## Herkunft der Daten
 

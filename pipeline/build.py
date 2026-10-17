@@ -16,6 +16,34 @@ OUT = os.path.join(ROOT, "app", "data")
 CELL_W, CELL_H, COLS, PER_SHEET = 288, 360, 5, 25
 
 
+def clean_artist(a):
+    """Kürzt Urheberangaben von Commons auf den Namen (Flickr-Herkunft, Hinweistexte, Talk-Links)."""
+    import re
+    a = (a or "").strip()
+    m = re.search(r'attribute as:\s*"([^"]+)"', a, re.I)
+    if m:
+        a = m.group(1)
+    m = re.search(r"Commons user (\S+?)\.(?:\s|$)", a)
+    if m:
+        a = m.group(1)
+    m = re.search(r"von (?:Teilnehmern der )?(.+?) erstellt", a)
+    if m:
+        a = m.group(1)
+    m = re.search(r"([^,]+?)\s*\(Urheber(?:in)?\)", a)
+    if m:
+        a = m.group(1)
+    m = re.search(r"Urheber(?:in)?:\s*(.+)$", a)
+    if m:
+        a = m.group(1)
+    if re.match(r"^(Achtung|Note):", a):
+        return "siehe Commons"
+    a = re.sub(r"\s*\((talk|Diskussion|Nutzungsrechteinhaber|Urheberin|Urheber)\).*$", "", a)
+    a = re.split(r"\s+(?:from|aus)\s+[A-ZÄÖÜ]", a)[0]
+    a = re.split(r"\s+[-|]\s+|,\s*de:", a)[0]
+    a = re.sub(r"^Foto AG", "Foto-AG", a).strip(" .,;")
+    return a if len(a) <= 60 else a[:57].rstrip() + "…"
+
+
 def main():
     os.makedirs(PORTRAITS, exist_ok=True)
     subprocess.run([os.path.join(ROOT, "pipeline", "portrait"), RAW, PORTRAITS, "360"], check=True)
@@ -52,7 +80,7 @@ def main():
             for cell, p in enumerate(part):
                 m = commons.get(p["image"], {})
                 people.append([p["name"], party, p.get("sub"), level, p.get("body"), idx, cell,
-                               m.get("artist") or "unbekannt", m.get("license", ""), p["image"], p["id"]])
+                               clean_artist(m.get("artist")) or "unbekannt", m.get("license", ""), p["image"], p["id"]])
 
     mpath = os.path.join(ROOT, "data", "cache", "sprites.json")
     json.dump({"cellW": CELL_W, "cellH": CELL_H, "cols": COLS, "quality": 0.58, "sheets": manifest}, open(mpath, "w"))

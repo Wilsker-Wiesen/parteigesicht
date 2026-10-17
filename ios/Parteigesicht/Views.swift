@@ -250,11 +250,13 @@ struct ChoiceView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                if answered != nil {
-                    PrimaryButton(title: game.position + 1 >= game.items.count ? "Auswertung ansehen" : "Nächstes Gesicht") {
-                        answered = nil; game.advance()
-                    }
+                // Platz für den Knopf immer freihalten, damit das Foto nach dem Tipp nicht springt
+                PrimaryButton(title: game.position + 1 >= game.items.count ? "Auswertung ansehen" : "Nächstes Gesicht") {
+                    answered = nil; game.advance()
                 }
+                .opacity(answered == nil ? 0 : 1)
+                .disabled(answered == nil)
+                .accessibilityHidden(answered == nil)
                 Credit(person: p, logo: answered != nil ? ix.logo(for: p) : nil)
                 Spacer(minLength: 0)
             }

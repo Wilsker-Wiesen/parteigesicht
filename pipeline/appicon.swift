@@ -23,7 +23,8 @@ func rgb(_ hex: UInt32) -> CGColor {
 
 let background = rgb(0xEEF0F4)
 // Offizielle Parteifarben (Wikidata P465, FDP: Gelb von fdp.de; siehe pipeline/colors.py) und Spaltenzahl je Partei
-// Varianten (dritter Aufrufparameter): "a" = eingebaut, "b" = BSW 2 Spalten, Raster nach rechts versetzt
+// Varianten (dritter Aufrufparameter): "a" = eingebaut, "b" = BSW 2 Spalten, Raster weit nach rechts,
+// "c" = BSW 2 Spalten, Raster leicht nach rechts (AfD 2 Spalten sichtbar, BSW noch im Kopf, Linke 3 Spalten)
 let variant = CommandLine.arguments.count > 3 ? CommandLine.arguments[3] : "a"
 let parties: [(color: UInt32, columns: Int)] = [
     (0xBE3075, 3),                    // Linke
@@ -31,7 +32,7 @@ let parties: [(color: UInt32, columns: Int)] = [
     (0xE3000F, 3),                    // SPD
     (0xFFE000, 2),                    // FDP
     (0x000000, 3),                    // Union
-    (0x792351, variant == "b" ? 2 : 3),  // BSW
+    (0x792351, variant == "a" ? 3 : 2),  // BSW
     (0x009EE0, 3),                    // AfD
 ]
 let columnColors = parties.flatMap { Array(repeating: $0.color, count: $0.columns) }
@@ -55,8 +56,8 @@ bust.closeSubpath()
 // Kachelraster: eine Kachel wird gesetzt, wenn ihr Mittelpunkt im Umriss liegt
 let y0: CGFloat = 8, y1: CGFloat = 96
 let cell: CGFloat = 3.6                        // Kachelgröße wie in Variante a (72 / 20)
-// Variante b: Raster beginnt am linken Schulterrand, die Linke liegt ganz in den Schultern
-let x0: CGFloat = variant == "b" ? 19 : 14
+// Raster-Beginn: a mittig, b am linken Schulterrand, c dazwischen
+let x0: CGFloat = ["a": 14, "b": 19, "c": 17.6][variant] ?? 14
 let gap = cell * 0.1, tile = cell - 2 * gap
 let rows = Int((y1 - y0) / cell)
 for r in 0..<rows {

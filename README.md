@@ -90,11 +90,7 @@ Abfragen und Downloads landen in `data/cache/` (nicht im Repository). Ein zweite
 
 ## Web-App veröffentlichen
 
-```bash
-sh pipeline/publish_pages.sh
-```
-
-Legt die Seite in den Zweig `gh-pages`; GitHub Pages liefert sie unter https://wilsker-wiesen.github.io/parteigesicht/ aus.
+Automatisch: Jeder Push auf `main`, der etwas in `app/` ändert, veröffentlicht die Seite über GitHub Actions (`.github/workflows/pages.yml`) unter https://wilsker-wiesen.github.io/parteigesicht/. Ersatzweise von Hand: `sh pipeline/publish_pages.sh` (Zweig `gh-pages`).
 
 ## Web-App lokal starten
 

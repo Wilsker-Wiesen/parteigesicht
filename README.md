@@ -19,7 +19,7 @@ Alle Farben stammen aus Wikidata (Eigenschaft P465, `pipeline/colors.py`). Das s
 
 ## App-Symbol
 
-„Spektrum-Kopf“: Kopf und Schultern aus sieben gleich breiten Streifen, von links nach rechts Linke, Grüne, SPD, FDP, Union, BSW, AfD, jeweils in der offiziellen Parteifarbe. Grün ist noch im Kopf zu sehen, das AfD-Blau ganz rechts liegt nur in den Schultern, die Linke ganz links ebenfalls. Erzeugt mit `pipeline/appicon.swift`, Vorlage in `docs/brand/app-symbol-1024.png`.
+„Mosaik-Kopf“: Kopf und Schultern aus kleinen Kacheln, jede Spalte gehört einer Partei. Von links nach rechts Linke, Grüne, SPD, FDP, Union, BSW, AfD in den offiziellen Parteifarben. Die FDP hat zwei Spalten, alle anderen drei. Erzeugt mit `pipeline/appicon.swift`, Vorlage in `docs/brand/app-symbol-1024.png`. Die Entwürfe der Symbol-Runden liegen als Artifacts vor (Symbol-Werkstatt, Mosaik-Varianten).
 
 ## Herkunft der Daten
 

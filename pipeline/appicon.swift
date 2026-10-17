@@ -1,8 +1,9 @@
-// Zeichnet das App-Symbol „Spektrum-Kopf“ als PNG (ohne abgerundete Ecken, die setzt iOS selbst).
+// Zeichnet das App-Symbol „Mosaik-Kopf“ als PNG (ohne abgerundete Ecken, die setzt iOS selbst).
 //
-// Kopf und Schultern aus sieben gleich breiten Streifen, von links nach rechts:
-// Linke, Grüne, SPD, FDP, Union, BSW, AfD. Der Kopf ist so groß, dass Grün noch im Kopf
-// zu sehen ist, das AfD-Blau ganz rechts aber nur in den Schultern liegt.
+// Kopf und Schultern aus kleinen Kacheln. Jede Spalte gehört einer Partei, von links nach rechts:
+// Linke, Grüne, SPD, FDP, Union, BSW, AfD. Die FDP hat zwei Spalten, alle anderen drei
+// (Entscheidung nach der Symbol-Runde vom 17.10.2026). Grün liegt noch im Kopf, das
+// AfD-Blau ganz rechts und die Linke ganz links nur in den Schultern.
 //
 // Aufruf: swiftc -O pipeline/appicon.swift -o pipeline/appicon
 //         pipeline/appicon <ausgabe.png> [größe]   (Standard 1024)
@@ -21,31 +22,48 @@ func rgb(_ hex: UInt32) -> CGColor {
 }
 
 let background = rgb(0xEEF0F4)
-// Offizielle Parteifarben (Wikidata P465, FDP: Gelb von fdp.de; siehe pipeline/colors.py)
-let stripes: [UInt32] = [0xBE3075, 0x409A3C, 0xE3000F, 0xFFE000, 0x000000, 0x792351, 0x009EE0]  // Linke, Grüne, SPD, FDP, Union, BSW, AfD
+// Offizielle Parteifarben (Wikidata P465, FDP: Gelb von fdp.de; siehe pipeline/colors.py) und Spaltenzahl je Partei
+let parties: [(color: UInt32, columns: Int)] = [
+    (0xBE3075, 3),  // Linke
+    (0x409A3C, 3),  // Grüne
+    (0xE3000F, 3),  // SPD
+    (0xFFE000, 2),  // FDP
+    (0x000000, 3),  // Union
+    (0x792351, 3),  // BSW
+    (0x009EE0, 3),  // AfD
+]
+let columnColors = parties.flatMap { Array(repeating: $0.color, count: $0.columns) }
 
 let cs = CGColorSpace(name: CGColorSpace.sRGB)!
 let ctx = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0, space: cs,
                     bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
 // Koordinaten wie im SVG-Entwurf: Ursprung oben links
 ctx.translateBy(x: 0, y: CGFloat(size)); ctx.scaleBy(x: s, y: -s)
-
 ctx.setFillColor(background); ctx.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
 
-// Kopf und Schultern als Maske
+// Umriss: Kopf und Schultern (wie Entwurf M2)
 let bust = CGMutablePath()
-// Kopf: x 30 bis 70; die Streifen sind je 58/7 ≈ 8,3 breit, Grün reicht bis 37,6, Blau beginnt bei 70,7
-bust.addEllipse(in: CGRect(x: 30, y: 17, width: 40, height: 40))
-bust.move(to: CGPoint(x: 21, y: 90))
-bust.addCurve(to: CGPoint(x: 50, y: 60), control1: CGPoint(x: 21, y: 68), control2: CGPoint(x: 33, y: 60))
-bust.addCurve(to: CGPoint(x: 79, y: 90), control1: CGPoint(x: 67, y: 60), control2: CGPoint(x: 79, y: 68))
+bust.addEllipse(in: CGRect(x: 29, y: 15, width: 42, height: 42))
+bust.move(to: CGPoint(x: 19, y: 94))
+// Schultern beginnen eine Kachelreihe unter dem Kopf, damit kein „Hals“ aus Kacheln entsteht
+bust.addCurve(to: CGPoint(x: 50, y: 62.5), control1: CGPoint(x: 19, y: 70), control2: CGPoint(x: 32, y: 62.5))
+bust.addCurve(to: CGPoint(x: 81, y: 94), control1: CGPoint(x: 68, y: 62.5), control2: CGPoint(x: 81, y: 70))
 bust.closeSubpath()
-ctx.addPath(bust); ctx.clip()
 
-let x0: CGFloat = 21, w: CGFloat = 58 / CGFloat(stripes.count)
-for (i, c) in stripes.enumerated() {
-    ctx.setFillColor(rgb(c))
-    ctx.fill(CGRect(x: x0 + CGFloat(i) * w, y: 0, width: w + 0.05, height: 100))
+// Kachelraster: eine Kachel wird gesetzt, wenn ihr Mittelpunkt im Umriss liegt
+let x0: CGFloat = 14, x1: CGFloat = 86, y0: CGFloat = 8, y1: CGFloat = 96
+let cell = (x1 - x0) / CGFloat(columnColors.count)
+let gap = cell * 0.1, tile = cell - 2 * gap
+let rows = Int((y1 - y0) / cell)
+for r in 0..<rows {
+    for (c, color) in columnColors.enumerated() {
+        let x = x0 + CGFloat(c) * cell, y = y0 + CGFloat(r) * cell
+        guard bust.contains(CGPoint(x: x + cell / 2, y: y + cell / 2)) else { continue }
+        ctx.setFillColor(rgb(color))
+        ctx.addPath(CGPath(roundedRect: CGRect(x: x + gap, y: y + gap, width: tile, height: tile),
+                           cornerWidth: tile * 0.12, cornerHeight: tile * 0.12, transform: nil))
+        ctx.fillPath()
+    }
 }
 
 let img = ctx.makeImage()!

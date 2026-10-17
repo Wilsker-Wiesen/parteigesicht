@@ -19,7 +19,7 @@ Alle Farben stammen aus Wikidata (Eigenschaft P465, `pipeline/colors.py`). Das s
 
 ## App-Symbol
 
-„Mosaik-Kopf“: Kopf und Schultern aus kleinen Kacheln, jede Spalte gehört einer Partei. Von links nach rechts Linke, Grüne, SPD, FDP, Union, BSW, AfD in den offiziellen Parteifarben. Die FDP hat zwei Spalten, alle anderen drei. Erzeugt mit `pipeline/appicon.swift`, Vorlage in `docs/brand/app-symbol-1024.png`. Die Entwürfe der Symbol-Runden liegen als Artifacts vor (Symbol-Werkstatt, Mosaik-Varianten).
+„Mosaik-Kopf“: Kopf und Schultern aus kleinen Kacheln, jede Spalte gehört einer Partei. Von links nach rechts Linke, Grüne, SPD, FDP, Union, BSW, AfD in den offiziellen Parteifarben. FDP und BSW haben je zwei Spalten, alle anderen drei; das Raster ist leicht nach rechts versetzt, sodass Grün und BSW im Kopf und Linke und AfD in den Schultern liegen. Frühere Fassungen: `pipeline/appicon <datei> 1024 a|b`, Vergleiche in `docs/brand/`. Erzeugt mit `pipeline/appicon.swift`, Vorlage in `docs/brand/app-symbol-1024.png`. Die Entwürfe der Symbol-Runden liegen als Artifacts vor (Symbol-Werkstatt, Mosaik-Varianten).
 
 ## Herkunft der Daten
 

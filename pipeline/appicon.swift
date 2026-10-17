@@ -1,9 +1,9 @@
 // Zeichnet das App-Symbol „Mosaik-Kopf“ als PNG (ohne abgerundete Ecken, die setzt iOS selbst).
 //
 // Kopf und Schultern aus kleinen Kacheln. Jede Spalte gehört einer Partei, von links nach rechts:
-// Linke, Grüne, SPD, FDP, Union, BSW, AfD. Die FDP hat zwei Spalten, alle anderen drei
-// (Entscheidung nach der Symbol-Runde vom 17.10.2026). Grün liegt noch im Kopf, das
-// AfD-Blau ganz rechts und die Linke ganz links nur in den Schultern.
+// Linke, Grüne, SPD, FDP, Union, BSW, AfD. FDP und BSW haben je zwei Spalten, alle anderen drei;
+// das Raster ist leicht nach rechts versetzt (Variante c, Entscheidung vom 17.10.2026).
+// Grün und BSW liegen noch im Kopf, Linke und AfD in den Schultern (AfD mit zwei Spalten).
 //
 // Aufruf: swiftc -O pipeline/appicon.swift -o pipeline/appicon
 //         pipeline/appicon <ausgabe.png> [größe]   (Standard 1024)
@@ -23,9 +23,10 @@ func rgb(_ hex: UInt32) -> CGColor {
 
 let background = rgb(0xEEF0F4)
 // Offizielle Parteifarben (Wikidata P465, FDP: Gelb von fdp.de; siehe pipeline/colors.py) und Spaltenzahl je Partei
-// Varianten (dritter Aufrufparameter): "a" = eingebaut, "b" = BSW 2 Spalten, Raster weit nach rechts,
+// Varianten (dritter Aufrufparameter, Standard "c" = eingebaut seit 17.10.2026):
+// "a" = erste Fassung (BSW 3 Spalten, Raster mittig), "b" = BSW 2 Spalten, Raster weit nach rechts,
 // "c" = BSW 2 Spalten, Raster leicht nach rechts (AfD 2 Spalten sichtbar, BSW noch im Kopf, Linke 3 Spalten)
-let variant = CommandLine.arguments.count > 3 ? CommandLine.arguments[3] : "a"
+let variant = CommandLine.arguments.count > 3 ? CommandLine.arguments[3] : "c"
 let parties: [(color: UInt32, columns: Int)] = [
     (0xBE3075, 3),                    // Linke
     (0x409A3C, 3),                    // Grüne

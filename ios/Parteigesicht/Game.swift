@@ -96,6 +96,13 @@ final class Game: ObservableObject {
 
     static let roundSize = 20
 
+    /// Reihenfolge von links (progressiver) nach rechts wie im Farbbalken, gleich wie LEFT_RIGHT in der Web-App;
+    /// bei zwei Parteien liegt die linkere auf der linken Wischseite
+    static let leftRight = ["LINKE", "PARTEI", "PIRATEN", "GRUENE", "VOLT", "SPD", "SSW", "OEDP", "FDP", "FW", "UNION", "BSW", "AFD"]
+    static func sortedLeftRight(_ keys: [String]) -> [String] {
+        keys.sorted { (leftRight.firstIndex(of: $0) ?? 99) < (leftRight.firstIndex(of: $1) ?? 99) }
+    }
+
     let index: GameIndex
     private var bySheet: [[Int]]
     private var rnd: () -> Double = { Double.random(in: 0..<1) }
@@ -144,6 +151,9 @@ final class Game: ObservableObject {
     var menuTarget: String? { chosen.count == 1 ? chosen[0] : nil }
     /// Modus der laufenden Runde
     var targetParty: String? { round.parties.count == 1 ? round.parties[0] : nil }
+    /// Zwei Parteien: [links, rechts] zum Wischen
+    var pair: [String]? { round.parties.count == 2 ? Game.sortedLeftRight(round.parties) : nil }
+    var swipes: Bool { targetParty != nil || pair != nil }
     var current: Person? { position < items.count ? items[position] : nil }
     var currentAnswer: Answer? { position < answers.count ? answers[position] : nil }
     var correctCount: Int { answers.filter(\.correct).count }
@@ -383,7 +393,7 @@ final class Game: ObservableObject {
             live?.progress(answered: answers.count, correct: correctCount, bonus: bonus, totalMs: totalMs, done: answers.count >= items.count)
         }
         // Wischen läuft immer von selbst weiter; Zuordnen nur mit Zeitlimit, damit alle im gleichen Takt bleiben
-        let delay: Double? = targetParty != nil ? (a.correct ? 0.9 : 1.6) : (round.timer > 0 ? (a.correct ? 1.5 : 2.2) : nil)
+        let delay: Double? = swipes ? (a.correct ? 0.9 : 1.6) : (round.timer > 0 ? (a.correct ? 1.5 : 2.2) : nil)
         if let delay {
             let work = DispatchWorkItem { [weak self] in self?.advance() }
             pendingAdvance = work

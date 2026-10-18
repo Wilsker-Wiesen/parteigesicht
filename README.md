@@ -10,6 +10,7 @@ Erfasst sind Politikerinnen und Politiker von der Kommune bis zum Europaparlamen
 
 - **Zuordnen:** Mehrere Parteien sind gewählt. Unter dem Foto stehen farbige Kacheln, eine pro Partei. Jede gewählte Partei kommt in einer Runde gleich oft vor.
 - **Ja/Nein (Wischen):** Genau eine Partei ist gewählt. Nach rechts wischen heißt „gehört dazu“, nach links „gehört nicht dazu“, wie bei Tinder. Die Hälfte der Gesichter gehört zur gewählten Partei, die andere Hälfte zu anderen Parteien.
+- **Entweder-oder (Wischen):** Genau zwei Parteien sind gewählt. Nach links wischen heißt die linkere, nach rechts die rechtere Partei; je die Hälfte der Gesichter gehört zu einer der beiden. Die Reihenfolge von links nach rechts (`LEFT_RIGHT` in `app/index.html`, `Game.leftRight` in der iOS-App): Linke, Die PARTEI, Piraten, Grüne, Volt, SPD, SSW, ÖDP, FDP, Freie Wähler, Union, BSW, AfD. Die Gesichter sind dieselben wie beim Zuordnen, gemeinsame Codes bleiben also gültig.
 - **Ebenen:** Bundestag, Europaparlament, Landtage, Regierungen, Kommunal (Bürgermeister, Landräte, Räte) und weitere Parteimitglieder. Ebenen lassen sich kombinieren.
 - **Zeitlimit:** Optional 5 bis 30 Sekunden pro Gesicht. Läuft die Zeit ab, zählt das Gesicht als falsch, und es geht automatisch weiter.
 - **Schnell-Bonus:** Jede richtige Antwort innerhalb von 40 % des Zeitlimits (ohne Limit: unter 3 s) bringt einen Bonuspunkt. Die Auswertung zeigt Punkte, Treffer, Bonus und Gesamtzeit; bei gemeinsamen Runden gewinnen die meisten Punkte, bei Gleichstand die kürzere Gesamtzeit.

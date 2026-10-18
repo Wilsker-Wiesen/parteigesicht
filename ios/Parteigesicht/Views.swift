@@ -11,7 +11,7 @@ struct RootView: View {
                 switch game.phase {
                 case .menu: MenuView()
                 case .playing:
-                    if game.targetParty != nil { SwipeView() } else { ChoiceView() }
+                    if game.swipes { SwipeView() } else { ChoiceView() }
                 case .result: ResultView()
                 case .share(let cfg): CodeShareView(config: cfg)
                 case .join(let prefill): JoinView(prefill: prefill ?? "")
@@ -98,6 +98,9 @@ struct MenuView: View {
                     let timerNote = game.timer > 0 ? " Nach \(game.timer) Sekunden ohne Antwort zählt das Gesicht als falsch." : ""
                     if let t = game.menuTarget {
                         Text("**Ja/Nein-Modus:** Gehört die Person **\(ix.party(t).zu ?? "zu " + ix.party(t).label)**? Nach rechts wischen = Ja, nach links = Nein.\(timerNote) Schnelle richtige Antworten (\(fast)) bringen je einen Bonuspunkt.")
+                    } else if game.chosen.count == 2 {
+                        let lr = Game.sortedLeftRight(game.chosen).map { ix.party($0).label }
+                        Text("**Entweder-oder:** Nach links wischen = **\(lr[0])**, nach rechts = **\(lr[1])**. Je die Hälfte der Gesichter gehört zu einer der beiden Parteien.\(timerNote) Schnelle richtige Antworten (\(fast)) bringen je einen Bonuspunkt.")
                     } else if game.chosen.count >= 2 {
                         Text("**Zuordnen:** \(game.chosen.count) Parteien, je \(max(2, Int((Double(Game.roundSize) / Double(game.chosen.count)).rounded()))) Gesichter pro Runde.\(timerNote) Schnelle richtige Antworten (\(fast)) bringen je einen Bonuspunkt.")
                     } else {
@@ -347,13 +350,21 @@ struct SwipeView: View {
 
     var body: some View {
         let ix = game.index
-        let target = ix.party(game.targetParty ?? "")
+        let target = ix.party(game.targetParty ?? game.pair?[0] ?? "")
+        // Zwei Parteien: links die linkere, rechts die rechtere
+        let pair = game.pair.map { (ix.party($0[0]), ix.party($0[1])) }
         let feedback = game.currentAnswer
         let locked = feedback != nil
         VStack(spacing: 14) {
             RoundHeader()
-            (Text("Gehört diese Person ") + Text(target.zu ?? "zu \(target.label)").foregroundColor(target.key == "UNION" || target.textDark == true ? Theme.ink : Color(hex: target.color)) + Text("?"))
-                .font(Theme.display(16, .semibold)).multilineTextAlignment(.center)
+            Group {
+                if let (l, r) = pair {
+                    Text(l.label).foregroundColor(Self.ink(l)) + Text(" oder ") + Text(r.label).foregroundColor(Self.ink(r)) + Text("?")
+                } else {
+                    Text("Gehört diese Person ") + Text(target.zu ?? "zu \(target.label)").foregroundColor(Self.ink(target)) + Text("?")
+                }
+            }
+            .font(Theme.display(16, .semibold)).multilineTextAlignment(.center)
             ZStack {
                 if game.position + 1 < game.items.count {
                     FaceView(person: game.items[game.position + 1], index: ix)
@@ -362,8 +373,14 @@ struct SwipeView: View {
                 }
                 if let p = game.current {
                     FaceView(person: p, index: ix)
-                        .overlay(alignment: .topLeading) { Stamp(text: "JA", color: Theme.yes, angle: -14).opacity(Double(offset.width / 90)).padding(20) }
-                        .overlay(alignment: .topTrailing) { Stamp(text: "NEIN", color: Theme.no, angle: 14).opacity(Double(-offset.width / 90)).padding(20) }
+                        .overlay(alignment: .topLeading) {
+                            Stamp(text: pair?.1.label.uppercased() ?? "JA", color: pair.map { Color(hex: $0.1.color) } ?? Theme.yes, angle: -14, filled: pair != nil)
+                                .opacity(Double(offset.width / 90)).padding(20)
+                        }
+                        .overlay(alignment: .topTrailing) {
+                            Stamp(text: pair?.0.label.uppercased() ?? "NEIN", color: pair.map { Color(hex: $0.0.color) } ?? Theme.no, angle: 14, filled: pair != nil)
+                                .opacity(Double(-offset.width / 90)).padding(20)
+                        }
                         .clipShape(RoundedRectangle(cornerRadius: 22))
                         // Zeit um: Karte bleibt liegen und wird grau
                         .grayscale(feedback?.timedOut == true ? 1 : 0)
@@ -385,15 +402,20 @@ struct SwipeView: View {
                                 }
                         )
                         .id(p.id)
-                        .accessibilityAction(named: "Ja") { decide(true) }
-                        .accessibilityAction(named: "Nein") { decide(false) }
+                        .accessibilityAction(named: pair?.1.label ?? "Ja") { decide(true) }
+                        .accessibilityAction(named: pair?.0.label ?? "Nein") { decide(false) }
                 }
             }
             .frame(maxHeight: 480)
             if let p = game.current { Credit(person: p, logo: feedback.map { game.index.logo(for: $0.person) } ?? nil) }
             HStack(spacing: 36) {
-                RoundButton(symbol: "xmark", color: Theme.no) { decide(false) }.accessibilityLabel("Nein, gehört nicht zu \(target.label)")
-                RoundButton(symbol: "checkmark", color: Theme.yes) { decide(true) }.accessibilityLabel("Ja, gehört zu \(target.label)")
+                if let (l, r) = pair {
+                    PartyButton(party: l, arrow: "←", leading: true) { decide(false) }
+                    PartyButton(party: r, arrow: "→", leading: false) { decide(true) }
+                } else {
+                    RoundButton(symbol: "xmark", color: Theme.no) { decide(false) }.accessibilityLabel("Nein, gehört nicht zu \(target.label)")
+                    RoundButton(symbol: "checkmark", color: Theme.yes) { decide(true) }.accessibilityLabel("Ja, gehört zu \(target.label)")
+                }
             }
             Group {
                 if let a = feedback {
@@ -402,7 +424,7 @@ struct SwipeView: View {
                     (Text(game.verdictText(a) + ": ").foregroundColor(a.correct ? Theme.yes : Theme.no).bold()
                      + Text(p.name).bold() + Text(", \(ix.partyLabel(p)) · \(p.whereLabel)"))
                 } else {
-                    Text("Nach rechts wischen = Ja · nach links = Nein").foregroundStyle(Theme.muted)
+                    Text(pair.map { "Nach links wischen = \($0.0.label) · nach rechts = \($0.1.label)" } ?? "Nach rechts wischen = Ja · nach links = Nein").foregroundStyle(Theme.muted)
                 }
             }
             .font(.subheadline).multilineTextAlignment(.center).frame(minHeight: 44)
@@ -412,10 +434,20 @@ struct SwipeView: View {
         .onChange(of: game.position) { _, _ in offset = .zero }
     }
 
+    static func ink(_ p: GameIndex.Party) -> Color { p.key == "UNION" || p.textDark == true ? Theme.ink : Color(hex: p.color) }
+
+    /// yes = nach rechts; bei zwei Parteien heißt das: die rechtere Partei
     private func decide(_ yes: Bool) {
         guard game.currentAnswer == nil, let p = game.current else { return }
-        let ok = (p.party == game.targetParty) == yes
-        game.answer(yes: yes)
+        let ok: Bool
+        if let pair = game.pair {
+            let guess = yes ? pair[1] : pair[0]
+            ok = p.party == guess
+            game.answer(party: guess)
+        } else {
+            ok = (p.party == game.targetParty) == yes
+            game.answer(yes: yes)
+        }
         Haptics.tap(ok)
         withAnimation(.easeOut(duration: 0.28)) { offset = CGSize(width: yes ? 700 : -700, height: offset.height + 60) }
     }
@@ -423,11 +455,30 @@ struct SwipeView: View {
 
 struct Stamp: View {
     let text: String; let color: Color; let angle: Double
+    var filled = false
     var body: some View {
-        Text(text).font(Theme.display(30, .black)).foregroundStyle(color)
+        Text(text).font(Theme.display(filled ? 24 : 30, .black)).foregroundStyle(color)
             .padding(.horizontal, 10).padding(.vertical, 2)
+            .background(filled ? Color.white.opacity(0.88) : .clear, in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(color, lineWidth: 4))
             .rotationEffect(.degrees(angle))
+    }
+}
+
+/// Knopf in Parteifarbe für das Wischen zwischen zwei Parteien
+struct PartyButton: View {
+    let party: GameIndex.Party; let arrow: String; let leading: Bool; let action: () -> Void
+    var body: some View {
+        let dark = party.textDark == true || party.key == "FDP"
+        Button(action: action) {
+            Text(leading ? "\(arrow) \(party.label)" : "\(party.label) \(arrow)")
+                .font(Theme.display(16, .heavy)).lineLimit(1).minimumScaleFactor(0.6)
+                .foregroundStyle(dark ? Theme.ink : .white)
+                .padding(.horizontal, 20).frame(minWidth: 110, minHeight: 64)
+                .background(Capsule().fill(Color(hex: party.color)).shadow(color: .black.opacity(0.15), radius: 8, y: 3))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(party.label)
     }
 }
 
@@ -546,7 +597,7 @@ struct ResultView: View {
     }
 
     private var matrix: some View {
-        let ix = game.index, keys = game.round.parties
+        let ix = game.index, keys = game.pair ?? game.round.parties
         let cnt = Dictionary(grouping: game.answers, by: { "\($0.person.party)>\($0.guess ?? "")" }).mapValues(\.count)
         return VStack(alignment: .leading, spacing: 4) {
             Text("Zeilen: tatsächliche Partei · Spalten: dein Tipp").font(.caption).foregroundStyle(.secondary)

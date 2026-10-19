@@ -373,13 +373,13 @@ struct SwipeView: View {
                 }
                 if let p = game.current {
                     FaceView(person: p, index: ix)
+                        // Ja/Nein-Stempel nur im Ein-Partei-Modus; bei zwei Parteien sähe ein Parteistempel
+                        // beim Ziehen schon wie die Auflösung aus
                         .overlay(alignment: .topLeading) {
-                            Stamp(text: pair?.1.label.uppercased() ?? "JA", color: pair.map { Color(hex: $0.1.color) } ?? Theme.yes, angle: -14, filled: pair != nil)
-                                .opacity(Double(offset.width / 90)).padding(20)
+                            if pair == nil { Stamp(text: "JA", color: Theme.yes, angle: -14).opacity(Double(offset.width / 90)).padding(20) }
                         }
                         .overlay(alignment: .topTrailing) {
-                            Stamp(text: pair?.0.label.uppercased() ?? "NEIN", color: pair.map { Color(hex: $0.0.color) } ?? Theme.no, angle: 14, filled: pair != nil)
-                                .opacity(Double(-offset.width / 90)).padding(20)
+                            if pair == nil { Stamp(text: "NEIN", color: Theme.no, angle: 14).opacity(Double(-offset.width / 90)).padding(20) }
                         }
                         .clipShape(RoundedRectangle(cornerRadius: 22))
                         // Zeit um: Karte bleibt liegen und wird grau
@@ -406,6 +406,14 @@ struct SwipeView: View {
                         .accessibilityAction(named: pair?.0.label ?? "Nein") { decide(false) }
                 }
             }
+            .overlay {
+                // Erst nach der Entscheidung: welche Partei es war, grün oder rot umrandet
+                if let a = feedback {
+                    RevealPopup(person: a.person, index: ix, correct: a.correct)
+                        .transition(.scale(scale: 0.6).combined(with: .opacity))
+                }
+            }
+            .animation(.easeOut(duration: 0.22), value: feedback != nil)
             .frame(maxHeight: 480)
             if let p = game.current { Credit(person: p, logo: feedback.map { game.index.logo(for: $0.person) } ?? nil) }
             HStack(spacing: 36) {
@@ -453,13 +461,26 @@ struct SwipeView: View {
     }
 }
 
+struct RevealPopup: View {
+    let person: Person; let index: GameIndex; let correct: Bool
+    var body: some View {
+        VStack(spacing: 8) {
+            PartyLogo(person: person, index: index, width: 110, height: 66)
+            Text(index.party(person.party).label).font(Theme.display(19, .heavy))
+        }
+        .padding(.horizontal, 18).padding(.vertical, 14).frame(minWidth: 150)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(correct ? Theme.yes : Theme.no, lineWidth: 5))
+        .shadow(color: .black.opacity(0.25), radius: 14, y: 6)
+        .accessibilityHidden(true)
+    }
+}
+
 struct Stamp: View {
     let text: String; let color: Color; let angle: Double
-    var filled = false
     var body: some View {
-        Text(text).font(Theme.display(filled ? 24 : 30, .black)).foregroundStyle(color)
+        Text(text).font(Theme.display(30, .black)).foregroundStyle(color)
             .padding(.horizontal, 10).padding(.vertical, 2)
-            .background(filled ? Color.white.opacity(0.88) : .clear, in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(color, lineWidth: 4))
             .rotationEffect(.degrees(angle))
     }

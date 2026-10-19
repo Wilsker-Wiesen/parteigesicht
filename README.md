@@ -42,7 +42,7 @@ Fotos von Parlaments- oder Parteiwebseiten werden **nicht** verwendet, weil sie 
 
 Nach jedem Tipp erscheint klein das Logo der Partei (von Commons; urheberrechtlich gemeinfrei bzw. CC BY/CC BY-SA mit Urhebernennung, aber als Marken geschützt). Auf den Kacheln selbst stehen nur Farbe und Name, damit das Logo nicht beim Raten hilft.
 
-Jedes Foto wird auf das Gesicht zugeschnitten. Der Hintergrund wird mit Apples Vision-Framework freigestellt, stark weichgezeichnet und entsättigt. So verraten Parteilogos, Plakate oder Parteifarben im Hintergrund nichts.
+Das Spiel zeigt nur das Gesicht: Jedes Foto wird eng auf den Kopf zugeschnitten, und ein weiches Oval blendet alles darunter in einen neutralen Grund über. Schultern, Kragen, Krawatten, Anstecknadeln und Kleidung sind so nicht zu sehen. Der Hintergrund im Oval wird mit Apples Vision-Framework freigestellt, stark weichgezeichnet und entsättigt, damit Logos, Plakate oder Parteifarben nichts verraten. Der Zuschnitt ist in `pipeline/build.py` (`CROP`) wählbar; `brustbild` ist der frühere Zuschnitt mit Schultern.
 
 ## Aufbau
 
@@ -60,7 +60,7 @@ pipeline/             Datenerhebung, in dieser Reihenfolge:
   colors.py           Parteifarben aus Wikidata (P465) → config/parties.json
   build.py            5  Porträts aufbereiten, Bildbögen bauen → app/data/
   report.py           6  Abdeckungsbericht → docs/ABDECKUNG.md
-  portrait.swift      Gesicht finden, zuschneiden, Hintergrund weichzeichnen (Vision)
+  portrait.swift      Gesicht finden, Kopf im Oval zuschneiden, Hintergrund weichzeichnen (Vision)
   sprites.swift       25 Porträts je Bildbogen zusammensetzen
   appicon.swift       App-Symbol „Spektrum-Kopf“ zeichnen (iOS, Web)
   stats.py            Kurzübersicht Partei × Ebene

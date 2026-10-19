@@ -1,6 +1,6 @@
 """Schritt 5: Spieldaten bauen.
 
-1. Porträts aufbereiten (pipeline/portrait: Gesicht zuschneiden, Hintergrund weichzeichnen)
+1. Porträts aufbereiten (pipeline/portrait: nur den Kopf im Oval zeigen, Hintergrund weichzeichnen)
 2. Pro Partei und Ebene Bildbögen mit je 25 Gesichtern erzeugen (pipeline/sprites)
 3. app/data/index.json schreiben: Parteien, Ebenen, Bögen und alle Personen
 
@@ -11,7 +11,9 @@ sys.path.insert(0, os.path.dirname(__file__))
 from wd import load_json, save_json, ROOT
 
 RAW = os.path.join(ROOT, "data", "cache", "raw")
-PORTRAITS = os.path.join(ROOT, "data", "cache", "portraits")
+# nur der Kopf im Oval (siehe pipeline/portrait.swift); der frühere Brustbild-Zuschnitt lag in portraits/
+CROP = "gesicht"
+PORTRAITS = os.path.join(ROOT, "data", "cache", "portraits-" + CROP)
 OUT = os.path.join(ROOT, "app", "data")
 CELL_W, CELL_H, COLS, PER_SHEET = 288, 360, 5, 25
 
@@ -46,7 +48,7 @@ def clean_artist(a):
 
 def main():
     os.makedirs(PORTRAITS, exist_ok=True)
-    subprocess.run([os.path.join(ROOT, "pipeline", "portrait"), RAW, PORTRAITS, "360"], check=True)
+    subprocess.run([os.path.join(ROOT, "pipeline", "portrait"), RAW, PORTRAITS, "360", CROP], check=True)
     report = json.load(open(os.path.join(PORTRAITS, "report.json")))
 
     parties = load_json("config/parties.json")

@@ -678,8 +678,11 @@ function startTimer(onExpire) {
   };
   tick(); timerHandle = setInterval(tick, 100);
 }
-function creditHtml(p) {
-  return `Foto: ${esc(p.artist)} · ${esc(p.license)} · <a href="https://commons.wikimedia.org/wiki/File:${encodeURIComponent(p.file)}" target="_blank" rel="noopener">Commons</a> (zugeschnitten, Hintergrund weichgezeichnet)`;
+// Den Urheber erst nach der Antwort zeigen: Namen wie „CDU“, „Fraktion DIE LINKE“ oder
+// „BÜNDNIS 90/DIE GRÜNEN“ verraten sonst die Partei (bei allen Fotos, damit das Ausblenden nichts verrät)
+function creditHtml(p, revealed) {
+  const artist = revealed ? p.artist : "Urheber nach der Antwort";
+  return `Foto: ${esc(artist)} · ${esc(p.license)} · <a href="https://commons.wikimedia.org/wiki/File:${encodeURIComponent(p.file)}" target="_blank" rel="noopener">Commons</a> (zugeschnitten, Hintergrund weichgezeichnet)`;
 }
 function logoFor(p) {
   const L = IX.logos || {};
@@ -740,7 +743,7 @@ function answer(guess) {
   document.querySelector(".meta").textContent = `${round.i + 1} / ${round.items.length} · ${round.answers.filter(a => a.ok).length} richtig`;
   document.getElementById("photo").insertAdjacentHTML("beforeend",
     `<span class="verdict ${ok ? "ok" : "bad"}">${timedOut ? "Zeit um" : ok ? (isFast(round.answers.at(-1)) ? "Richtig · schnell +1" : "Richtig") : "Daneben"}</span>${revealHtml(p)}`);
-  document.querySelector(".credit").insertAdjacentHTML("beforeend", logoCredit(p));
+  document.querySelector(".credit").innerHTML = creditHtml(p, true) + logoCredit(p);
   const last = round.i === round.items.length - 1;
   document.getElementById("after").innerHTML = `<button class="next" id="next" type="button">${last ? "Auswertung ansehen" : "Nächstes Gesicht"}</button>`;
   const nx = document.getElementById("next");
@@ -819,7 +822,7 @@ function bindSwipe(p, judge) {
     const fb = document.getElementById("feedback");
     const lg = logoFor(p);
     fb.innerHTML = `${lg ? `<span class="badge" style="position:static;display:inline-flex;vertical-align:middle;width:56px;height:34px;margin-right:6px;${p.party === "GRUENE" ? "padding:0" : ""}"><img src="data/${lg.path}" alt="Logo ${esc(P[p.party].long)}" style="${p.party === "GRUENE" ? "width:100%;height:100%;object-fit:cover;max-width:none;max-height:none" : ""}"></span>` : ""}<span style="color:${ok ? "var(--ok)" : "var(--bad)"};font-weight:600">${timedOut ? "Zeit um" : ok ? (isFast(round.answers.at(-1)) ? "Richtig, schnell +1" : "Richtig") : "Daneben"}:</span> <b>${esc(p.name)}</b>, ${esc(partyLabel(p))} · ${esc(whereLabel(p))}`;
-    document.querySelector(".credit").insertAdjacentHTML("beforeend", logoCredit(p));
+    document.querySelector(".credit").innerHTML = creditHtml(p, true) + logoCredit(p);
     document.querySelector(".meta").textContent = `${round.i + 1} / ${round.items.length} · ${round.answers.filter(a => a.ok).length} richtig`;
     setTimeout(() => {
       if (round.i === round.items.length - 1) renderResult();

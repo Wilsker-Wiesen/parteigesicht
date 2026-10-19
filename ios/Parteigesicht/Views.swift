@@ -239,9 +239,11 @@ struct Credit: View {
     let person: Person
     /// Logo-Urheber nach der Auflösung, nur bei CC-lizenzierten Logos nötig
     var logo: GameIndex.Logo? = nil
+    /// Urheber erst nach der Antwort (bei allen Fotos): Namen wie „CDU“ oder „Fraktion DIE LINKE“ verraten sonst die Partei
+    var revealed = false
     var body: some View {
         HStack(spacing: 4) {
-            Text("Foto: \(person.artist) · \(person.license) ·")
+            Text("Foto: \(revealed ? person.artist : "Urheber nach der Antwort") · \(person.license) ·")
             if let url = person.commonsURL { Link("Commons", destination: url) }
             if let logo, logo.license.hasPrefix("CC") { Text("· Logo: \(logo.artist ?? "unbekannt") · \(logo.license)") }
         }
@@ -327,7 +329,7 @@ struct ChoiceView: View {
                 .opacity(done ? 1 : 0)
                 .disabled(!done)
                 .accessibilityHidden(!done)
-                Credit(person: p, logo: done ? ix.logo(for: p) : nil)
+                Credit(person: p, logo: done ? ix.logo(for: p) : nil, revealed: done)
                 Spacer(minLength: 0)
             }
             .padding()
@@ -415,7 +417,7 @@ struct SwipeView: View {
             }
             .animation(.easeOut(duration: 0.22), value: feedback != nil)
             .frame(maxHeight: 480)
-            if let p = game.current { Credit(person: p, logo: feedback.map { game.index.logo(for: $0.person) } ?? nil) }
+            if let p = game.current { Credit(person: p, logo: feedback.map { game.index.logo(for: $0.person) } ?? nil, revealed: feedback != nil) }
             HStack(spacing: 36) {
                 if let (l, r) = pair {
                     PartyButton(party: l, arrow: "←", leading: true) { decide(false) }

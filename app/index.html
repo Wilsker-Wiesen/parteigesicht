@@ -158,6 +158,30 @@ td { font-weight: 600; border-radius: 4px; }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; box-shadow: 0 0 0 1px rgba(127,127,127,.5); flex: none; }
 .insights { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .insights li { background: var(--card); border-radius: 12px; padding: 11px 13px; line-height: 1.4; }
+.insights li.has-list { padding: 0; }
+.insights summary { list-style: none; cursor: pointer; padding: 11px 13px; }
+.insights summary::-webkit-details-marker { display: none; }
+.insights .more { display: block; margin-top: 4px; font-size: .82rem; font-weight: 700; color: var(--muted); }
+.insights .more::after { content: " ›"; display: inline-block; transition: transform .2s; }
+.insights details[open] .more::after { transform: rotate(90deg); }
+.mistakes { display: flex; flex-direction: column; gap: 10px; padding: 0 13px 13px; }
+.allwrong .mistakes { padding: 10px 0 0; }
+.mk { display: flex; gap: 12px; align-items: center; animation: mkin .35s ease-out both; animation-delay: calc(var(--i) * 70ms); }
+.mk-face { position: relative; flex: none; width: 64px; aspect-ratio: 4 / 5; border-radius: 10px; overflow: hidden; }
+.mk-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mk-info small { color: var(--muted); font-size: .78rem; }
+.mk-flow { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.pchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px 3px 4px; border-radius: 9px; border: 2.5px solid; background: #fff; color: #111318; font-weight: 700; font-size: .82rem; }
+.pchip.ok { border-color: var(--ok); } .pchip.bad { border-color: var(--bad); opacity: .85; }
+.pchip.logo { padding: 2px 6px; width: 74px; height: 36px; justify-content: center; }
+.pchip.logo.full { padding: 0; overflow: hidden; }
+.pchip img { max-height: 100%; max-width: 100%; object-fit: contain; }
+.pchip.logo.full img { width: 100%; height: 100%; object-fit: cover; max-width: none; }
+.pchip i { width: 12px; height: 12px; border-radius: 50%; margin-left: 4px; }
+.pchip:not(:has(img, i)) { padding-left: 8px; }
+.mk-arrow { font-weight: 900; font-size: 1.1rem; color: var(--muted); display: inline-block; animation: mkarrow .5s ease-out both; animation-delay: calc(var(--i) * 70ms + .2s); }
+@keyframes mkin { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes mkarrow { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
 .row-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .note { font-size: .75rem; color: var(--muted); line-height: 1.45; }
 /* Zeitlimit pro Gesicht */
@@ -816,6 +840,28 @@ function bindSwipe(p, judge) {
 }
 
 // ---------- Auswertung ----------
+// Auswertung: Aussagen, die sich zu den betroffenen Gesichtern aufklappen lassen
+function insightsHtml(ins) {
+  return `<ul class="insights">${ins.map(t => typeof t === "string" || !t.list || !t.list.length
+    ? `<li>${typeof t === "string" ? t : t.html}</li>`
+    : `<li class="has-list"><details><summary>${t.html}<span class="more">Gesichter ansehen</span></summary>${mistakesHtml(t.list)}</details></li>`).join("")}</ul>`;
+}
+// Ein Gesicht mit deinem Tipp (rot) → was es gewesen wäre (grün)
+function mistakesHtml(list) {
+  const chip = (key, p, cls) => {
+    if (key === "_no") return `<span class="pchip ${cls}"><span>Nein</span></span>`;
+    if (key === "_time") return `<span class="pchip ${cls}"><span>Zeit um</span></span>`;
+    const lg = p ? logoFor(p) : key === "UNION" ? (IX.logos || {}).CDU : (IX.logos || {})[key];
+    const label = esc(p ? partyLabel(p) : P[key].label);
+    return lg ? `<span class="pchip logo ${cls} ${key === "GRUENE" ? "full" : ""}" title="${label}"><img src="data/${lg.path}" alt="${label}"></span>`
+              : `<span class="pchip ${cls}"><i style="background:${P[key].color}"></i><span>${label}</span></span>`;
+  };
+  return `<div class="mistakes">${list.map((a, i) => `<div class="mk" style="--i:${i}">
+    <div class="mk-face"><div class="face" style="${faceStyle(a.p)}"></div></div>
+    <div class="mk-info"><b>${esc(a.p.name)}</b><small>${esc(whereLabel(a.p))}</small>
+      <div class="mk-flow">${chip(a.guess, null, "bad")}<span class="mk-arrow" aria-label="richtig wäre">→</span>${chip(a.truth, a.p, "ok")}</div></div></div>`).join("")}</div>`;
+}
+
 function renderResult() {
   document.onkeydown = null; stopTimer(); screen = "result";
   const A = round.answers, n = A.length, ok = A.filter(a => a.ok).length;
@@ -828,17 +874,15 @@ function renderResult() {
     const hit = members.filter(a => a.yes).length, fa = others.filter(a => a.yes);
     chance = n / 2;
     const byParty = {}; fa.forEach(a => byParty[a.truth] = (byParty[a.truth] || 0) + 1);
+    const missed = members.filter(a => a.guess === "_no");
     const ins = [
-      `Von ${members.length} Personen aus der Partei <b>${esc(tp.label)}</b> hast du <b>${hit}</b> erkannt.`,
-      fa.length ? `${fa.length} von ${others.length} Personen aus anderen Parteien hast du für ${esc(tp.label)} gehalten: ${Object.entries(byParty).map(([k, v]) => `${v}× ${esc(P[k].label)}`).join(", ")}.`
+      { html: `Von ${members.length} Personen aus der Partei <b>${esc(tp.label)}</b> hast du <b>${hit}</b> erkannt.`, list: missed },
+      fa.length ? { html: `${fa.length} von ${others.length} Personen aus anderen Parteien hast du für ${esc(tp.label)} gehalten: ${Object.entries(byParty).map(([k, v]) => `${v}× ${esc(P[k].label)}`).join(", ")}.`, list: fa }
                 : `Niemanden aus einer anderen Partei hast du fälschlich ${esc(tp.label)} zugeordnet.`,
     ];
-    const yesCount = A.filter(a => a.yes).length;
-    if (yesCount >= n * 0.7) ins.push(`Du hast ${yesCount}-mal Ja gesagt, obwohl nur die Hälfte dazugehörte.`);
-    if (yesCount <= n * 0.3) ins.push(`Du hast nur ${yesCount}-mal Ja gesagt, obwohl die Hälfte dazugehörte.`);
-    const timeouts = A.filter(a => a.guess === "_time").length;
-    if (timeouts) ins.push(`${timeouts}-mal war die Zeit um, bevor du gewischt hast.`);
-    body = `<ul class="insights">${ins.map(t => `<li>${t}</li>`).join("")}</ul>`;
+    const timeouts = A.filter(a => a.guess === "_time");
+    if (timeouts.length) ins.push({ html: `${timeouts.length}-mal war die Zeit um, bevor du gewischt hast.`, list: timeouts });
+    body = insightsHtml(ins);
   } else {
     const parties = (round.pair || round.chosen).map(k => P[k]);
     chance = n / parties.length;
@@ -849,14 +893,16 @@ function renderResult() {
     const conf = [];
     parties.forEach(r => parties.forEach(c => { if (r.key !== c.key && m[r.key][c.key]) conf.push({ r, c, v: m[r.key][c.key] }); }));
     conf.sort((a, b) => b.v - a.v);
-    const gc = parties.map(c => ({ c, v: A.filter(a => a.guess === c.key).length })).sort((a, b) => b.v - a.v);
-    const ins = [];
-    if (gc[0].v > per + 1) ins.push(`Du hast <b>${gc[0].v}-mal ${esc(gc[0].c.label)}</b> getippt, obwohl nur ${per} Personen dabei waren. Woran hast du das festgemacht?`);
-    conf.slice(0, 2).forEach(x => ins.push(`${x.v} ${x.v === 1 ? "Person" : "Personen"} aus der Partei <b>${esc(x.r.label)}</b> hast du für <b>${esc(x.c.label)}</b> gehalten.`));
-    if (!ins.length) ins.push("Keine klare Schlagseite in dieser Runde.");
-    const timeouts = A.filter(a => a.guess === "_time").length;
-    if (timeouts) ins.push(`${timeouts}-mal war die Zeit um, bevor du getippt hast.`);
-    body = `<ul class="insights">${ins.map(t => `<li>${t}</li>`).join("")}</ul>
+    // jede Verwechslung lässt sich aufklappen: die Gesichter mit deinem Tipp → der richtigen Partei
+    // die drei häufigsten; alle übrigen stehen unten unter „Alle falsch eingeordneten“
+    const ins = conf.slice(0, 3).map(x => ({
+      html: `${x.v} ${x.v === 1 ? "Person" : "Personen"} aus der Partei <b>${esc(x.r.label)}</b> hast du für <b>${esc(x.c.label)}</b> gehalten.`,
+      list: A.filter(a => a.truth === x.r.key && a.guess === x.c.key),
+    }));
+    if (!ins.length) ins.push("Keine Verwechslungen in dieser Runde.");
+    const timeouts = A.filter(a => a.guess === "_time");
+    if (timeouts.length) ins.push({ html: `${timeouts.length}-mal war die Zeit um, bevor du getippt hast.`, list: timeouts });
+    body = `${insightsHtml(ins)}
       <div class="matrix-wrap"><table>
         <caption class="note" style="caption-side:top;text-align:left;padding-bottom:6px">Zeilen: tatsächliche Partei · Spalten: dein Tipp</caption>
         <thead><tr><th></th>${parties.map(c => `<th scope="col">${esc(c.label)}</th>`).join("")}</tr></thead>
@@ -880,8 +926,7 @@ function renderResult() {
       <p class="lede">Gesamt bisher auf diesem Gerät: ${tot.ok} von ${tot.n} (${Math.round(tot.ok / tot.n * 100)} %).</p></section>
     ${round.live ? `<h2 style="font:700 1.05rem var(--f-display);margin:4px 0 -6px">Live-Rangliste</h2><table class="ranking" id="ranking"></table><div id="liveact"></div>` : ""}
     ${body}
-    ${wrong.length ? `<details><summary class="note" style="cursor:pointer">Falsch eingeordnet (${wrong.length})</summary>
-      <ul class="note" style="padding-left:18px;margin:6px 0 0">${wrong.map(a => `<li>${esc(a.p.name)} (${esc(partyLabel(a.p))}, ${esc(whereLabel(a.p))})${a.guess === "_time" ? " – Zeit um" : ""}</li>`).join("")}</ul></details>` : ""}
+    ${wrong.length ? `<details class="allwrong"><summary class="note" style="cursor:pointer">Alle falsch eingeordneten (${wrong.length})</summary>${mistakesHtml(wrong)}</details>` : ""}
     <div class="row-actions" ${round.live ? 'style="grid-template-columns:1fr"' : ""}>
       ${round.live ? "" : '<button class="next" id="again" type="button">Neue Runde</button>'}
       <button class="next ghost" id="tomenu" type="button">${round.live ? "Raum verlassen" : "Menü"}</button>

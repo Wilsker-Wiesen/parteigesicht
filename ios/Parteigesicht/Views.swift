@@ -547,20 +547,14 @@ struct ResultView: View {
                 }
                 Text("Gesamt bisher: \(game.totalCorrect) von \(game.totalAnswered)").foregroundStyle(Theme.muted)
                 if game.round.live, let room = game.live { LiveRanking(room: room) }
-                ForEach(insights(), id: \.self) { t in
-                    Text(t).padding(12).frame(maxWidth: .infinity, alignment: .leading)
-                        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.card))
-                }
+                ForEach(insights()) { t in InsightCard(insight: t, index: ix, target: game.targetParty) }
                 if game.targetParty == nil { matrix }
                 let wrong = a.filter { !$0.correct }
                 if !wrong.isEmpty {
-                    DisclosureGroup("Falsch eingeordnet (\(wrong.count))") {
-                        VStack(alignment: .leading, spacing: 4) {
-                            ForEach(wrong, id: \.person.id) { w in
-                                Text("\(w.person.name) (\(ix.partyLabel(w.person)), \(w.person.whereLabel))\(w.timedOut ? " – Zeit um" : "")").font(.footnote)
-                            }
-                        }
+                    DisclosureGroup("Alle falsch eingeordneten (\(wrong.count))") {
+                        MistakeList(answers: wrong, index: ix, target: game.targetParty).padding(.top, 8)
                     }
+                    .font(Theme.body(14)).tint(Theme.muted)
                 }
                 if game.round.live {
                     PrimaryButton(title: "Raum verlassen", secondary: true) { game.backToMenu() }
@@ -581,39 +575,36 @@ struct ResultView: View {
         .toolbar(.hidden)
     }
 
-    private func insights() -> [String] {
+    /// Aussagen zur Runde; die mit Gesichtern lassen sich aufklappen
+    private func insights() -> [Insight] {
         let ix = game.index, a = game.answers
+        let timeouts = a.filter(\.timedOut)
         if let t = game.targetParty {
             let label = ix.party(t).label
             let members = a.filter { $0.person.party == t }, others = a.filter { $0.person.party != t }
             let hit = members.filter { $0.saidYes == true }.count
             let fa = others.filter { $0.saidYes == true }
-            var out = ["Von \(members.count) Personen aus der Partei \(label) hast du \(hit) erkannt."]
+            var out = [Insight(text: "Von \(members.count) Personen aus der Partei \(label) hast du \(hit) erkannt.",
+                               list: members.filter { $0.saidYes == false })]
             if fa.isEmpty {
-                out.append("Niemanden aus einer anderen Partei hast du fälschlich \(label) zugeordnet.")
+                out.append(Insight(text: "Niemanden aus einer anderen Partei hast du fälschlich \(label) zugeordnet."))
             } else {
                 let by = Dictionary(grouping: fa, by: { $0.person.party }).map { "\($0.value.count)× \(ix.party($0.key).label)" }
-                out.append("\(fa.count) von \(others.count) Personen aus anderen Parteien hast du für \(label) gehalten: \(by.joined(separator: ", ")).")
+                out.append(Insight(text: "\(fa.count) von \(others.count) Personen aus anderen Parteien hast du für \(label) gehalten: \(by.joined(separator: ", ")).", list: fa))
             }
-            if game.timeouts > 0 { out.append("\(game.timeouts)-mal war die Zeit um, bevor du gewischt hast.") }
+            if !timeouts.isEmpty { out.append(Insight(text: "\(timeouts.count)-mal war die Zeit um, bevor du gewischt hast.", list: timeouts)) }
             return out
         }
-        var out: [String] = []
-        let per = a.filter { $0.person.party == game.round.parties.first }.count
-        // „Zeit um“ hat keinen Tipp und zählt hier nicht mit
-        let typed = a.filter { !$0.timedOut && $0.guess != nil }
-        let guesses = Dictionary(grouping: typed, by: { $0.guess ?? "" }).mapValues(\.count)
-        if let top = guesses.max(by: { $0.value < $1.value }), top.value > per + 1 {
-            out.append("Du hast \(top.value)-mal \(ix.party(top.key).label) getippt, obwohl nur \(per) Personen dabei waren.")
-        }
-        let conf = Dictionary(grouping: typed.filter { !$0.correct }, by: { "\($0.person.party)>\($0.guess ?? "")" })
-            .sorted { $0.value.count > $1.value.count }.prefix(2)
-        for (k, v) in conf {
-            let parts = k.split(separator: ">").map(String.init)
-            out.append("\(v.count) aus der Partei \(ix.party(parts[0]).label) hast du für \(ix.party(parts[1]).label) gehalten.")
-        }
-        if out.isEmpty { out.append("Keine klare Schlagseite in dieser Runde.") }
-        if game.timeouts > 0 { out.append("\(game.timeouts)-mal war die Zeit um, bevor du getippt hast.") }
+        // die drei häufigsten Verwechslungen; alle übrigen stehen unter „Alle falsch eingeordneten“
+        let typed = a.filter { !$0.timedOut && $0.guess != nil && !$0.correct }
+        var out = Dictionary(grouping: typed, by: { "\($0.person.party)>\($0.guess ?? "")" })
+            .sorted { $0.value.count != $1.value.count ? $0.value.count > $1.value.count : $0.key < $1.key }.prefix(3)
+            .map { k, v -> Insight in
+                let parts = k.split(separator: ">").map(String.init)
+                return Insight(text: "\(v.count) \(v.count == 1 ? "Person" : "Personen") aus der Partei \(ix.party(parts[0]).label) hast du für \(ix.party(parts[1]).label) gehalten.", list: v)
+            }
+        if out.isEmpty { out.append(Insight(text: "Keine Verwechslungen in dieser Runde.")) }
+        if !timeouts.isEmpty { out.append(Insight(text: "\(timeouts.count)-mal war die Zeit um, bevor du getippt hast.", list: timeouts)) }
         return out
     }
 
@@ -643,6 +634,104 @@ struct ResultView: View {
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 12).fill(Theme.card))
+    }
+}
+
+struct Insight: Identifiable {
+    let text: String
+    var list: [Game.Answer] = []
+    var id: String { text }
+}
+
+/// Aussage der Auswertung; mit Gesichtern lässt sie sich aufklappen
+struct InsightCard: View {
+    let insight: Insight; let index: GameIndex; let target: String?
+    @State private var open = false
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(insight.text).frame(maxWidth: .infinity, alignment: .leading)
+            if !insight.list.isEmpty {
+                Button { withAnimation(.easeOut(duration: 0.25)) { open.toggle() } } label: {
+                    HStack(spacing: 4) {
+                        Text(open ? "Gesichter ausblenden" : "Gesichter ansehen")
+                        Image(systemName: "chevron.right").rotationEffect(.degrees(open ? 90 : 0))
+                    }
+                    .font(Theme.body(13, .bold)).foregroundStyle(Theme.muted)
+                }
+                .buttonStyle(.plain)
+                if open { MistakeList(answers: insight.list, index: index, target: target).transition(.opacity) }
+            }
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.card))
+    }
+}
+
+/// Gesichter mit deinem Tipp (rot) → was es gewesen wäre (grün)
+struct MistakeList: View {
+    let answers: [Game.Answer]; let index: GameIndex; let target: String?
+    @State private var shown = false
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(Array(answers.enumerated()), id: \.element.person.id) { i, a in
+                HStack(spacing: 12) {
+                    FaceView(person: a.person, index: index)
+                        .frame(width: 64, height: 80).clipShape(RoundedRectangle(cornerRadius: 10))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(a.person.name).font(Theme.body(15, .bold))
+                        Text(a.person.whereLabel).font(Theme.body(12)).foregroundStyle(Theme.muted)
+                        HStack(spacing: 8) {
+                            guessChip(a)
+                            Image(systemName: "arrow.right").font(.system(size: 15, weight: .heavy)).foregroundStyle(Theme.muted)
+                                .opacity(shown ? 1 : 0).offset(x: shown ? 0 : -8)
+                                .accessibilityLabel("richtig wäre")
+                            LogoChip(logo: index.logo(for: a.person), party: index.party(a.person.party), label: index.partyLabel(a.person), correct: true)
+                        }
+                        .padding(.top, 4)
+                    }
+                }
+                .opacity(shown ? 1 : 0).offset(y: shown ? 0 : 6)
+                .animation(.easeOut(duration: 0.35).delay(Double(i) * 0.07), value: shown)
+            }
+        }
+        .onAppear { shown = true }
+    }
+
+    @ViewBuilder private func guessChip(_ a: Game.Answer) -> some View {
+        if a.timedOut {
+            LogoChip(logo: nil, party: nil, label: "Zeit um", correct: false)
+        } else if let g = a.guess ?? (a.saidYes == true ? target : nil) {
+            let party = index.party(g)
+            LogoChip(logo: index.logos?[g == "UNION" ? "CDU" : g], party: party, label: party.label, correct: false)
+        } else {
+            LogoChip(logo: nil, party: nil, label: "Nein", correct: false)
+        }
+    }
+}
+
+/// Parteilogo (oder Name) mit grünem oder rotem Rahmen
+struct LogoChip: View {
+    let logo: GameIndex.Logo?; let party: GameIndex.Party?; let label: String; let correct: Bool
+    var body: some View {
+        Group {
+            if let logo, let url = Bundle.main.url(forResource: "data/" + logo.path, withExtension: nil),
+               let src = CGImageSourceCreateWithURL(url as CFURL, nil), let img = CGImageSourceCreateImageAtIndex(src, 0, nil) {
+                let fills = party?.key == "GRUENE"
+                Image(decorative: img, scale: 1).resizable().aspectRatio(contentMode: fills ? .fill : .fit)
+                    .padding(fills ? 0 : 4).frame(width: 74, height: 36).clipped()
+                    .accessibilityLabel(label)
+            } else {
+                HStack(spacing: 6) {
+                    if let party { Circle().fill(Color(hex: party.color)).frame(width: 12, height: 12) }
+                    Text(label).font(Theme.body(13, .bold))
+                }
+                .padding(.horizontal, 8).frame(height: 36)
+            }
+        }
+        .foregroundStyle(Color(hex: "#111318"))
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 9))
+        .overlay(RoundedRectangle(cornerRadius: 9).stroke(correct ? Theme.yes : Theme.no, lineWidth: 2.5))
+        .opacity(correct ? 1 : 0.85)
     }
 }
 
